@@ -13,9 +13,11 @@ import glob
 CONDA_ACTIVATE_PATH = "/opt/conda/etc/profile.d/conda.sh"
 CONDA_ENV_NAME = "pyenv"
 
+PROJECT_DIR = "/workspace/YuE-Interface"
 # Default Hugging Face models
 DEFAULT_STAGE1_MODEL = "/workspace/models/YuE-s1-7B-anneal-en-cot"
 DEFAULT_STAGE2_MODEL = "/workspace/models/YuE-s2-1B-general"
+TOKENIZER_MODEL = "/workspace/YuE-Interface/inference/mm_tokenizer_v0.2_hf/tokenizer.model"
 
 # Output directory
 DEFAULT_OUTPUT_DIR = "/workspace/outputs"
@@ -69,6 +71,7 @@ def stop_generation(pid):
 def generate_song(
     stage1_model,
     stage2_model,
+    tokenizer_model,
     genre_txt_path,
     lyrics_txt_path,
     run_n_segments,
@@ -86,9 +89,10 @@ def generate_song(
 
     # Build base command
     cmd = [
-        "python", "infer.py",
+        "python", f"{PROJECT_DIR}/inference/infer.py",
         "--stage1_model", stage1_model,
         "--stage2_model", stage2_model,
+        "--tokenizer", tokenizer_model,
         "--genre_txt", genre_txt_path,
         "--lyrics_txt", lyrics_txt_path,
         "--run_n_segments", str(run_n_segments),
@@ -155,17 +159,21 @@ def find_newest_wav(output_dir):
 
 def build_gradio_interface():
     with gr.Blocks(title="YuE Song Generation Interface") as demo:
-        gr.Markdown("# YuE Song Generation\nWrite your Genre and Lyrics in TextAreas, then generate & listen!")
+        gr.Markdown("# YuE Song Generation\nWrite your Genre and Lyrics then generate & listen!")
 
         with gr.Row():
             with gr.Column():
                 stage1_model = gr.Textbox(
-                    label="Stage1 Model (HF repo)",
+                    label="Stage1 Model",
                     value=DEFAULT_STAGE1_MODEL
                 )
                 stage2_model = gr.Textbox(
-                    label="Stage2 Model (HF repo)",
+                    label="Stage2 Model",
                     value=DEFAULT_STAGE2_MODEL
+                )
+                tokenizer_model = gr.Textbox(
+                    label="Tokenizer Model",
+                    value=TOKENIZER_MODEL
                 )
 
                 # TextAreas for genre and lyrics
@@ -252,7 +260,6 @@ def build_gradio_interface():
                 # Section to show audio and let user download
                 audio_player = gr.Audio(
                     label="Generated Audio",
-                    source="filepath",
                     type="filepath",
                     value=None,
                     interactive=False
@@ -270,6 +277,7 @@ def build_gradio_interface():
         def on_generate_click(
             stage1_model,
             stage2_model,
+            tokenizer_model,
             genre_text,
             lyrics_text,
             run_n_segments,
@@ -309,6 +317,7 @@ def build_gradio_interface():
             msg, pid = generate_song(
                 stage1_model,
                 stage2_model,
+                tokenizer_model,
                 genre_tmp_path,
                 lyrics_tmp_path,
                 run_n_segments,
@@ -332,6 +341,7 @@ def build_gradio_interface():
             inputs=[
                 stage1_model,
                 stage2_model,
+                tokenizer_model,
                 genre_textarea,
                 lyrics_textarea,
                 run_n_segments,
@@ -376,7 +386,7 @@ def build_gradio_interface():
             return updated_logs, newest_audio
 
         # This timer triggers every second, updating logs and the audio path if generation is done
-        log_timer = gr.Timer(interval=1.0)
+        log_timer = gr.Timer(0.5, active=False)
 
         log_timer_fn = log_timer.tick(
             fn=refresh_state,

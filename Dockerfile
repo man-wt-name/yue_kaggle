@@ -82,6 +82,8 @@ COPY docker/default /etc/nginx/sites-available/default
 # Add Jupyter Notebook
 RUN pip install jupyterlab ipywidgets jupyter-archive jupyter_contrib_nbextensions nodejs
 
+RUN pip install -U "huggingface_hub[cli]"
+
 EXPOSE 8888
 
 # Tensorboard

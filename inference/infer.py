@@ -31,6 +31,7 @@ parser = argparse.ArgumentParser()
 # Model Configuration:
 parser.add_argument("--stage1_model", type=str, default="m-a-p/YuE-s1-7B-anneal-en-cot", help="The model checkpoint path or identifier for the Stage 1 model.")
 parser.add_argument("--stage2_model", type=str, default="m-a-p/YuE-s2-1B-general", help="The model checkpoint path or identifier for the Stage 2 model.")
+parser.add_argument("--tokenizer", type=str, default="mm_tokenizer_v0.2_hf/tokenizer.model", help="The model tokenizer path")
 parser.add_argument("--max_new_tokens", type=int, default=3000, help="The maximum number of new tokens to generate in one pass during text generation.")
 parser.add_argument("--run_n_segments", type=int, default=2, help="The number of segments to process during the generation.")
 parser.add_argument("--stage2_batch_size", type=int, default=4, help="The batch size used in Stage 2 inference.")
@@ -60,6 +61,7 @@ if args.use_audio_prompt and not args.audio_prompt_path:
     raise FileNotFoundError("Please offer audio prompt filepath using '--audio_prompt_path', when you enable 'use_audio_prompt'!")
 stage1_model = args.stage1_model
 stage2_model = args.stage2_model
+tokenizer_path = args.tokenizer
 cuda_idx = args.cuda_idx
 max_new_tokens = args.max_new_tokens
 stage1_output_dir = os.path.join(args.output_dir, f"stage1")
@@ -69,7 +71,7 @@ os.makedirs(stage2_output_dir, exist_ok=True)
 
 # load tokenizer and model
 device = torch.device(f"cuda:{cuda_idx}" if torch.cuda.is_available() else "cpu")
-mmtokenizer = _MMSentencePieceTokenizer("./mm_tokenizer_v0.2_hf/tokenizer.model")
+mmtokenizer = _MMSentencePieceTokenizer(tokenizer_path)
 model = AutoModelForCausalLM.from_pretrained(
     stage1_model, 
     torch_dtype=torch.bfloat16,
