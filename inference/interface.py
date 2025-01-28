@@ -419,8 +419,8 @@ def build_gradio_interface():
 
             # Return gr.update() for fields that have changed, else no update
             return (
-                updated_log if has_log_changes else None,  # log_box
-                new_audio if has_audio_changes else None,  # current_audio_path
+                updated_log if has_log_changes else gr.update(),  # log_box
+                new_audio if has_audio_changes else gr.update(),  # current_audio_path
                 updated_log if has_log_changes else last_log,     # last_log_update
                 new_audio if has_audio_changes else last_audio    # last_audio_update
             )
@@ -428,7 +428,7 @@ def build_gradio_interface():
         def update_audio_player(audio_path, last_audio):
             if audio_path and audio_path != last_audio and os.path.exists(audio_path):
                 return audio_path, audio_path
-            return gr.update(), gr.update()
+            return None, None
 
         log_timer = gr.Timer(0.5, active=False)
 
