@@ -4,6 +4,7 @@
 INIT_MARKER="/var/run/container_initialized"
 DOWNLOAD_MODELS=${DOWNLOAD_MODELS:-"all"}  # Default if not set
 REPO_DIR=${REPO_DIR:-"/workspace/YuE-Interface"}
+MODEL_DIR=${MODEL_DIR:-"/workspace/models"}
 
 echo "DOWNLOAD_MODELS is: $DOWNLOAD_MODELS"
 
@@ -13,15 +14,14 @@ conda activate pyenv
 # Define models with source (Hugging Face repo) and destination directory
 declare -A MODELS
 MODELS=(
-    ["xcodec_mini_infer"]="m-a-p/xcodec_mini_infer:/workspace/YuE-Interface/inference/xcodec_mini_infer"
-    ["YuE-s1-7B-anneal-en-cot"]="m-a-p/YuE-s1-7B-anneal-en-cot:/workspace/models/YuE-s1-7B-anneal-en-cot"
-    ["YuE-s1-7B-anneal-en-icl"]="m-a-p/YuE-s1-7B-anneal-en-icl:/workspace/models/YuE-s1-7B-anneal-en-icl"
-    ["YuE-s1-7B-anneal-jp-kr-cot"]="m-a-p/YuE-s1-7B-anneal-jp-kr-cot:/workspace/models/YuE-s1-7B-anneal-jp-kr-cot"
-    ["YuE-s1-7B-anneal-jp-kr-icl"]="m-a-p/YuE-s1-7B-anneal-jp-kr-icl:/workspace/models/YuE-s1-7B-anneal-jp-kr-icl"
-    ["YuE-s1-7B-anneal-zh-cot"]="m-a-p/YuE-s1-7B-anneal-zh-cot:/workspace/models/YuE-s1-7B-anneal-zh-cot"
-    ["YuE-s1-7B-anneal-zh-icl"]="m-a-p/YuE-s1-7B-anneal-zh-icl:/workspace/models/YuE-s1-7B-anneal-zh-icl"
-    ["YuE-s2-1B-general"]="m-a-p/YuE-s2-1B-general:/workspace/models/YuE-s2-1B-general"
-    ["YuE-upsampler"]="m-a-p/YuE-upsampler:/workspace/models/YuE-upsampler"
+    ["YuE-s1-7B-anneal-en-cot"]="m-a-p/YuE-s1-7B-anneal-en-cot:${MODEL_DIR}/YuE-s1-7B-anneal-en-cot"
+    ["YuE-s1-7B-anneal-en-icl"]="m-a-p/YuE-s1-7B-anneal-en-icl:${MODEL_DIR}/YuE-s1-7B-anneal-en-icl"
+    ["YuE-s1-7B-anneal-jp-kr-cot"]="m-a-p/YuE-s1-7B-anneal-jp-kr-cot:${MODEL_DIR}/YuE-s1-7B-anneal-jp-kr-cot"
+    ["YuE-s1-7B-anneal-jp-kr-icl"]="m-a-p/YuE-s1-7B-anneal-jp-kr-icl:${MODEL_DIR}/YuE-s1-7B-anneal-jp-kr-icl"
+    ["YuE-s1-7B-anneal-zh-cot"]="m-a-p/YuE-s1-7B-anneal-zh-cot:${MODEL_DIR}/YuE-s1-7B-anneal-zh-cot"
+    ["YuE-s1-7B-anneal-zh-icl"]="m-a-p/YuE-s1-7B-anneal-zh-icl:${MODEL_DIR}/YuE-s1-7B-anneal-zh-icl"
+    ["YuE-s2-1B-general"]="m-a-p/YuE-s2-1B-general:/${MODEL_DIR}/YuE-s2-1B-general"
+    ["YuE-upsampler"]="m-a-p/YuE-upsampler:${MODEL_DIR}/YuE-upsampler"
 )
 
 if [ ! -f "$INIT_MARKER" ]; then
@@ -32,16 +32,11 @@ if [ ! -f "$INIT_MARKER" ]; then
 
     echo "Installing dependencies from requirements.txt..."
     pip install --no-cache-dir -r $REPO_DIR/requirements.txt
-    
-    SOURCE_DEST=(${MODELS[0]//:/ })
-    SOURCE="${SOURCE_DEST[0]}"
-    DESTINATION="${SOURCE_DEST[1]}"
 
-    if [ ! -d "$DESTINATION" ]; then
-        echo "Downloading model: $MODEL from $SOURCE to $DESTINATION"
-        huggingface-cli download "$SOURCE" --local-dir "$DESTINATION"
+    if [ ! -d "${REPO_DIR}/inference/xcodec_mini_infer" ]; then
+        huggingface-cli download m-a-p/xcodec_mini_infer --local-dir "${REPO_DIR}/inference/xcodec_mini_infer"
     else
-        echo "Skipping the model $MODEL because it already exists in $DESTINATION."
+        echo "Skipping the model xcodec_mini_infer download because it already exists."
     fi
 
     if [ "$DOWNLOAD_MODELS" != "false" ]; then
