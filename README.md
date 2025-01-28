@@ -28,7 +28,7 @@ If you have any very complex issues regarding the interface open a issue or send
 
 ## Prerequisites
 
-### Docker/Docker Compose
+### Docker
 
 Ensure you have Docker installed on your system. Follow the official Docker installation guides for your platform:
 
@@ -161,10 +161,9 @@ services:
 
 With Docker Compose, you can easily manage and deploy the YuE Interface with minimal setup! 🚀
 
-## How to Run using Docker
+## How to Run using only Docker
 
 ### You can also not use docker compose and do everything manually just using docker.
-
 
 ### Basic Run Command
 
