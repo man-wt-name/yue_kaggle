@@ -1,163 +1,228 @@
-<p align="center">
-    <img src="./assets/logo/白底.png" width="400" />
-</p>
+# YuE Interface
 
-<p align="center">
-    <a href="https://map-yue.github.io/">Demo 🎶</a> &nbsp;|&nbsp; 📑 <a href="">Paper (coming soon)</a>
-    <br>
-    <a href="https://huggingface.co/m-a-p/YuE-s1-7B-anneal-en-cot">YuE-s1-7B-anneal-en-cot 🤗</a> &nbsp;|&nbsp; <a href="https://huggingface.co/m-a-p/YuE-s1-7B-anneal-en-icl">YuE-s1-7B-anneal-en-icl 🤗</a> &nbsp;|&nbsp; <a href="https://huggingface.co/m-a-p/YuE-s1-7B-anneal-jp-kr-cot">YuE-s1-7B-anneal-jp-kr-cot 🤗</a>
-    <br>
-    <a href="https://huggingface.co/m-a-p/YuE-s1-7B-anneal-jp-kr-icl">YuE-s1-7B-anneal-jp-kr-icl 🤗</a> &nbsp;|&nbsp; <a href="https://huggingface.co/m-a-p/YuE-s1-7B-anneal-zh-cot">YuE-s1-7B-anneal-zh-cot 🤗</a> &nbsp;|&nbsp; <a href="https://huggingface.co/m-a-p/YuE-s1-7B-anneal-zh-icl">YuE-s1-7B-anneal-zh-icl 🤗</a>
-    <br>
-    <a href="https://huggingface.co/m-a-p/YuE-s2-1B-general">YuE-s2-1B-general 🤗</a> &nbsp;|&nbsp; <a href="https://huggingface.co/m-a-p/YuE-upsampler">YuE-upsampler 🤗</a>
-</p>
+Welcome to the **YuE Interface**, a robust and user-friendly Docker-based solution for generating music using YuE models. This interface leverages Gradio for an interactive web UI, enabling you to configure and execute music generation tasks seamlessly. Whether you're running locally with Docker or deploying on RunPod, this guide will help you get started.
 
----
-Our model's name is **YuE (乐)**. In Chinese, the word means "music" and "happiness." Some of you may find words that start with Yu hard to pronounce. If so, you can just call it "yeah." We wrote a song with our model's name.
+> **Note**: This project is a fork of the official [YuE repository](https://github.com/multimodal-art-projection/YuE).
 
-<audio controls src="https://cdn-uploads.huggingface.co/production/uploads/6555e8d8a0c34cd61a6b9ce3/rG-ELxMyzDU7zH-inB9DV.mpga"></audio>
+## Features
 
-YuE is a groundbreaking series of open-source foundation models designed for music generation, specifically for transforming lyrics into full songs (lyrics2song). It can generate a complete song, lasting several minutes, that includes both a catchy vocal track and complementary accompaniment, ensuring a polished and cohesive result. YuE is capable of modeling diverse genres/vocal styles. Below are examples of songs in the pop and metal genres. For more styles, please visit the demo page.
+- **Docker Image**: Pre-configured Docker image for easy deployment.
+- **Web UI (Gradio)**: Intuitive interface for configuring and executing music generation.
+- **NVIDIA GPU Support**: Mandatory support for NVIDIA GPUs to accelerate processing.
+- **Model Management**: Ability to download all or specific YuE models based on your needs.
+- **Volume Mapping**: Map model and output directories from the host system into the container.
+- **Real-time Logging**: Monitor generation logs directly from the web interface.
+- **Audio Playback and Download**: Listen to generated audio and download it directly from the interface.
 
-Pop:Quiet Evening
-<audio controls src="https://cdn-uploads.huggingface.co/production/uploads/640701cb4dc5f2846c91d4eb/gnBULaFjcUyXYzzIwXLZq.mpga"></audio>
-Metal: Step Back
-<audio controls src="https://cdn-uploads.huggingface.co/production/uploads/6555e8d8a0c34cd61a6b9ce3/kmCwl4GRS70UYDEELL-Tn.mpga"></audio>
+## Prerequisites
 
-## News and Updates
+### Docker
 
-* **2025.01.26 🔥**: We have released the **YuE** series.
+Ensure you have Docker installed on your system. Follow the official Docker installation guides for your platform:
 
-<br>
+- [Install Docker on Windows](https://docs.docker.com/desktop/windows/install/)
+- [Install Docker on Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
 
-## Requirements
+### NVIDIA GPU Support
 
-Python >=3.8 is recommended.
+This interface **requires NVIDIA GPUs** for acceleration. Ensure you have the necessary hardware and drivers set up.
 
-Install dependencies with the following command:
+1. **Linux**:
+   - Install the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html).
+   - Ensure your NVIDIA drivers are properly installed and up to date.
 
-```
-pip install -r requirements.txt
-```
+2. **Windows/macOS**:
+   - Refer to the respective Docker and NVIDIA documentation for GPU passthrough (e.g., WSL2 on Windows).
+   - **Note**: GPU support is mandatory. Without compatible NVIDIA GPUs, the container will not function correctly.
 
-### **Important: Install FlashAttention 2**
-For saving GPU memory, **FlashAttention 2 is mandatory**. Without it, large sequence lengths will lead to out-of-memory (OOM) errors, especially on GPUs with limited memory. Install it using the following command:
-```
-pip install flash-attn --no-build-isolation
-```
-Before installing FlashAttention, ensure that your CUDA environment is correctly set up. 
-For example, if you are using CUDA 11.8:
-- If using a module system:
-``` module load cuda11.8/toolkit/11.8.0 ```
-- Or manually configure CUDA in your shell:
-```
-    export PATH=/usr/local/cuda-11.8/bin:$PATH
-    export LD_LIBRARY_PATH=/usr/local/cuda-11.8/lib64:$LD_LIBRARY_PATH
-```
+## Docker Image
 
----
-
-## GPU Memory Usage and Sessions
-
-YuE requires significant GPU memory for generating long sequences. Below are the recommended configurations:
-
-- **For GPUs with 24GB memory or less**: Run **up to 2 sessions** concurrently to avoid out-of-memory (OOM) errors.
-- **For full song generation** (many sessions, e.g., 4 or more): Use **GPUs with at least 80GB memory**. This can be achieved by combining multiple GPUs and enabling tensor parallelism.
-
-To customize the number of sessions, the interface allows you to specify the desired session count. By default, the model runs **2 sessions** for optimal memory usage.
-
----
-
-## Quickstart
+The YuE Interface Docker image is hosted on Docker Hub:
 
 ```
-# Make sure you have git-lfs installed (https://git-lfs.com)
-git lfs install
-git clone https://github.com/multimodal-art-projection/YuE.git
-
-cd YuE/inference/
-git clone https://huggingface.co/m-a-p/xcodec_mini_infer
+alissonpereiraanjos/yue-interface:latest
 ```
 
-Here’s a quick guide to help you generate music with **YuE** using 🤗 Transformers. Before running the code, make sure your environment is properly set up, and that all dependencies are installed.
+## Environment Variables
 
-### Running the Script
+- **DOWNLOAD_MODELS**: Determines which models to download.
+  - Set to `all` to download all available models.
+  - Alternatively, specify a comma-separated list of model keys to download specific models (e.g., `DOWNLOAD_MODELS=YuE-s2-1B-general,YuE-s1-7B-anneal-en-cot`).
 
-In the following example, customize the `genres` and `lyrics` in the script, then execute it to generate a song with **YuE**.
+## How to Run using Docker
 
-Notice: Set `--run_n_segments` to the number of lyric sections if you want to generate a full song. Additionally, you can increase `--stage2_batch_size` based on your available GPU memory.
+### Basic Run Command
+
+To start the YuE Interface with all models downloaded and NVIDIA GPU support enabled:
 
 ```bash
-cd YuE/inference/
-python infer.py \
-    --stage1_model m-a-p/YuE-s1-7B-anneal-en-cot \
-    --stage2_model m-a-p/YuE-s2-1B-general \
-    --genre_txt prompt_examples/genre.txt \
-    --lyrics_txt prompt_examples/lyrics.txt \
-    --run_n_segments 2 \
-    --stage2_batch_size 4 \
-    --output_dir ./output \
-    --cuda_idx 0 \
-    --max_new_tokens 3000 
+docker run --gpus all -d \
+  -p 7860:7860 \
+  -p 8888:8888 \
+  -e DOWNLOAD_MODELS=all \
+  alissonpereiraanjos/yue-interface:latest
 ```
 
-If you want to use audio prompt, enable `--use_audio_prompt`, and provide audio prompt:
+- `--gpus all`: Enables NVIDIA GPU support.
+- `-d`: Runs the container in detached mode (background).
+- `-p 7860:7860`: Exposes port `7860` for accessing the Gradio UI at [http://localhost:7860](http://localhost:7860).
+- `-p 8888:8888`: Exposes port `8888` for additional services if applicable.
+- `-e DOWNLOAD_MODELS=all`: Downloads all available models upon initialization.
+
+### Specifying Models to Download
+
+To download specific models, set the `DOWNLOAD_MODELS` environment variable to a comma-separated list of model keys:
+
 ```bash
-cd YuE/inference/
-python infer.py \
-    --stage1_model m-a-p/YuE-s1-7B-anneal-en-icl \
-    --stage2_model m-a-p/YuE-s2-1B-general \
-    --genre_txt prompt_examples/genre.txt \
-    --lyrics_txt prompt_examples/lyrics.txt \
-    --run_n_segments 2 \
-    --stage2_batch_size 4 \
-    --output_dir ./output \
-    --cuda_idx 0 \
-    --max_new_tokens 3000 \
-    --audio_prompt_path {YOUR_AUDIO_FILE} \
-    --prompt_start_time 0 \
-    --prompt_end_time 30 
+docker run --gpus all -d \
+  -p 7860:7860 \
+  -p 8888:8888 \
+  -e DOWNLOAD_MODELS=YuE-s2-1B-general,YuE-s1-7B-anneal-en-cot \
+  alissonpereiraanjos/yue-interface:latest
 ```
 
+### Mapping Directories for Models and Output
 
----
+You can mount host directories to store models and outputs outside the container:
 
-### **Execution Time**
-On an **H800 GPU**, generating 30s audio takes **150 seconds**.
-On an **RTX 4090 GPU**, generating 30s audio takes approximately **360 seconds**.  
-
-**Tips:**
-1. `genres` should include details like instruments, genre, mood, vocal timbre, and vocal gender.
-2. The length of `lyrics` segments and the `--max_new_tokens` value should be matched. For example, if `--max_new_tokens` is set to 3000, the maximum duration for a segment is around 30 seconds. Ensure your lyrics fit this time frame.
-3. If using audio prompt，the duration around 30s will be fine.
----
-
-### Notice
-1. A suitable [Genre] tag consists of five components: genre, instrument, mood, gender, and timbre. All five should be included if possible, separated by spaces. The values of timbre should include "vocal" (e.g., "bright vocal").
-
-2. Although our tags have an open vocabulary, we have provided the 200 most commonly used [tags](./wav_top_200_tags.json). It is recommended to select tags from this list for more stable results.
-
-3. The order of the tags is flexible. For example, a stable genre control string might look like: "[Genre] inspiring female uplifting pop airy vocal electronic bright vocal vocal."
-
-4. Additionally, we have introduced the "Mandarin" and "Cantonese" tags to distinguish between Mandarin and Cantonese, as their lyrics often share similarities.
-
-## License Agreement
-
-Creative Commons Attribution Non Commercial 4.0
-
----
-
-## Citation
-
-If you find our paper and code useful in your research, please consider giving a star :star: and citation :pencil: :)
-
-```BibTeX
-@misc{yuan2025yue,
-  title={YuE: Open Music Foundation Models for Full-Song Generation},
-  author={Ruibin Yuan and Hanfeng Lin and Shawn Guo and Ge Zhang and Jiahao Pan and Yongyi Zang and Haohe Liu and Xingjian Du and Xeron Du and Zhen Ye and Tianyu Zheng and Yinghao Ma and Minghao Liu and Lijun Yu and Zeyue Tian and Ziya Zhou and Liumeng Xue and Xingwei Qu and Yizhi Li and Tianhao Shen and Ziyang Ma and Shangda Wu and Jun Zhan and Chunhui Wang and Yatian Wang and Xiaohuan Zhou and Xiaowei Chi and Xinyue Zhang and Zhenzhu Yang and Yiming Liang and Xiangzhou Wang and Shansong Liu and Lingrui Mei and Peng Li and Yong Chen and Chenghua Lin and Xie Chen and Gus Xia and Zhaoxiang Zhang and Chao Zhang and Wenhu Chen and Xinyu Zhou and Xipeng Qiu and Roger Dannenberg and Jiaheng Liu and Jian Yang and Stephen Huang and Wei Xue and Xu Tan and Yike Guo}, 
-  howpublished={\url{https://github.com/multimodal-art-projection/YuE}},
-  year={2025},
-  note={GitHub repository}
-}
+```bash
+docker run --gpus all -it \
+  -v /path/to/models:/workspace/models \
+  -v /path/to/outputs:/workspace/outputs \
+  -p 7860:7860 \
+  -p 8888:8888 \
+  -e DOWNLOAD_MODELS=false \
+  alissonpereiraanjos/yue-interface:latest
 ```
-<br>
+
+- `-v /path/to/models:/workspace/models`: Mounts the host's `/path/to/models` directory to `/workspace/models` inside the container.
+- `-v /path/to/outputs:/workspace/outputs`: Mounts the host's `/path/to/outputs` directory to `/workspace/outputs` inside the container.
+- `-e DOWNLOAD_MODELS=false`: Skips automatic model downloads (useful if models are already present in the mounted directories).
+
+#### Example for Windows:
+
+```bash
+docker run --gpus all -it \
+  -v D:\AI\yue\models:/workspace/models \
+  -v D:\AI\yue\outputs:/workspace/outputs \
+  -p 7860:7860 \
+  -p 8888:8888 \
+  -e DOWNLOAD_MODELS=false \
+  alissonpereiraanjos/yue-interface:latest
+```
+
+### Mapping Gradio to Port 8888
+
+If you prefer to map Gradio to port `8888` in addition to the default `7860`, adjust the port mapping accordingly:
+
+```bash
+docker run --gpus all -d \
+  -p 7860:7860 \
+  -p 8888:8888 \
+  -e DOWNLOAD_MODELS=all \
+  alissonpereiraanjos/yue-interface:latest
+```
+
+In this example, the Gradio UI inside the container is accessible on both ports `7860` and `8888`.
+
+## Summary of Options
+
+- `-v /host/path:/container/path`: Mount host directories into the container.
+- `-p host_port:container_port`: Map container ports to host ports.
+  - Example: `-p 7860:7860` maps the container's `7860` port to host's `7860`.
+  - Example: `-p 8888:8888` maps the container's `8888` port to host's `8888`.
+- `-e VARIABLE=value`: Set environment variables.
+  - Example: `-e DOWNLOAD_MODELS=YuE-s2-1B-general,YuE-s1-7B-anneal-en-cot`
+- `--gpus all`: Enables NVIDIA GPU support.
+- `-it`: Start in interactive mode (useful for debugging).
+- `-d`: Start in detached mode (runs in the background).
+
+Use these options to tailor the setup to your environment and requirements.
+
+## Available Models
+
+Below is the list of available YuE models that you can download by specifying their keys in the `DOWNLOAD_MODELS` environment variable:
+
+| Model Key                   | Docker Image Path                | Container Directory                                   |
+|-----------------------------|----------------------------------|-------------------------------------------------------|
+| `xcodec_mini_infer`         | `m-a-p/xcodec_mini_infer`        | `/workspace/YuE-Interface/inference/xcodec_mini_infer` |
+| `YuE-s1-7B-anneal-en-cot`    | `m-a-p/YuE-s1-7B-anneal-en-cot`   | `/workspace/models/YuE-s1-7B-anneal-en-cot`            |
+| `YuE-s1-7B-anneal-en-icl`    | `m-a-p/YuE-s1-7B-anneal-en-icl`   | `/workspace/models/YuE-s1-7B-anneal-en-icl`            |
+| `YuE-s1-7B-anneal-jp-kr-cot` | `m-a-p/YuE-s1-7B-anneal-jp-kr-cot`| `/workspace/models/YuE-s1-7B-anneal-jp-kr-cot`         |
+| `YuE-s1-7B-anneal-jp-kr-icl` | `m-a-p/YuE-s1-7B-anneal-jp-kr-icl`| `/workspace/models/YuE-s1-7B-anneal-jp-kr-icl`         |
+| `YuE-s1-7B-anneal-zh-cot`    | `m-a-p/YuE-s1-7B-anneal-zh-cot`    | `/workspace/models/YuE-s1-7B-anneal-zh-cot`            |
+| `YuE-s1-7B-anneal-zh-icl`    | `m-a-p/YuE-s1-7B-anneal-zh-icl`    | `/workspace/models/YuE-s1-7B-anneal-zh-icl`            |
+| `YuE-s2-1B-general`          | `m-a-p/YuE-s2-1B-general`          | `/workspace/models/YuE-s2-1B-general`                  |
+| `YuE-upsampler`              | `m-a-p/YuE-upsampler`              | `/workspace/models/YuE-upsampler`                      |
+
+Use the appropriate model keys in the `DOWNLOAD_MODELS` environment variable to download specific models.
+
+### Example: Downloading Specific Models
+
+To download only `YuE-s2-1B-general` and `YuE-s1-7B-anneal-en-cot` models:
+
+```bash
+docker run --gpus all -d \
+  -p 7860:7860 \
+  -p 8888:8888 \
+  -e DOWNLOAD_MODELS=YuE-s2-1B-general,YuE-s1-7B-anneal-en-cot \
+  alissonpereiraanjos/yue-interface:latest
+```
+
+## Update Docker Image (Important)
+
+To update the Docker image with the latest changes, run:
+
+```bash
+docker pull alissonpereiraanjos/yue-interface:latest
+```
+
+**Note**: Always update the image before running the container to ensure you have the latest features and fixes. This is especially important when deploying on RunPod, as it pulls the latest image upon creating a new pod.
+
+## Running on RunPod
+
+If you prefer to use **RunPod**, you can quickly deploy an instance based on this image by using the following template link:
+
+[**Deploy on RunPod**](https://runpod.io/console/deploy?template=s8yr44w7br&ref=8t518hht)
+
+This link directs you to the RunPod console, allowing you to set up a machine directly with the YuE Interface image. Configure your GPU, volume mounts, and environment variables as needed.
+
+**Tip**: If you generate music frequently, consider creating a **Network Volume** in RunPod. This allows you to store models and data persistently, avoiding repeated downloads and saving time.
+
+### Example Command for RunPod
+
+```bash
+docker run --gpus all -d \
+  -v /mnt/models:/workspace/models \
+  -v /mnt/outputs:/workspace/outputs \
+  -p 7860:7860 \
+  -p 8888:8888 \
+  -e DOWNLOAD_MODELS=YuE-s2-1B-general,YuE-s1-7B-anneal-en-cot \
+  alissonpereiraanjos/yue-interface:latest
+```
+
+Replace `/mnt/models` and `/mnt/outputs` with your desired volume mount paths in RunPod.
+
+## Accessing the Interface
+
+Once the container is running, access the Gradio web UI at:
+
+```
+http://localhost:7860
+```
+
+If deployed on RunPod, use the provided RunPod URL to access the interface.
+
+## Support
+
+If you encounter any issues or have questions, please open an issue in the [GitHub repository](https://github.com/alissonpereiraanjos/yue-interface).
+
+For official documentation and updates, refer to the [official YuE repository](https://github.com/multimodal-art-projection/YuE).
+
+## Acknowledgements
+
+A special thank you to the developers of the official [YuE repository](https://github.com/multimodal-art-projection/YuE) for their outstanding work and for making this project possible.
+
+---
+
+**Happy Music Generating! 🎶**
