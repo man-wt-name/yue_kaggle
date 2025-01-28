@@ -46,6 +46,7 @@ def read_subprocess_output(proc, log_queue, audio_path_queue):
     """Reads subprocess stdout line by line, placing them into log_queue and audio_path_queue."""
     for line in iter(proc.stdout.readline, b''):
         decoded_line = line.decode("utf-8", errors="replace")
+        print(f"Subprocess output: {decoded_line}")  # Debugging
         log_queue.put(decoded_line)
         
         # Detect the line containing "Created mix:"
@@ -54,6 +55,7 @@ def read_subprocess_output(proc, log_queue, audio_path_queue):
             match = re.search(r"Created mix:\s*(\S+)", decoded_line)
             if match:
                 audio_path = match.group(1)
+                print(f"Audio path found: {audio_path}")  # Debugging
                 audio_path_queue.put(audio_path)
     proc.stdout.close()
     proc.wait()
@@ -120,9 +122,9 @@ def generate_song(
     else:
         saved_audio_path = ""
 
-    # Build base command
+    # Build base command with '-u' for unbuffered output
     cmd = [
-        "python", f"{PROJECT_DIR}/inference/infer.py",
+        "python", "-u", f"{PROJECT_DIR}/inference/infer.py",  # Adicionado '-u' aqui
         "--stage1_model", stage1_model,
         "--stage2_model", stage2_model,
         "--tokenizer", tokenizer_model,
@@ -415,27 +417,25 @@ def build_gradio_interface():
             has_log_changes = updated_log != last_log
             has_audio_changes = new_audio != last_audio and new_audio is not None
 
-            # Return None for fields that have not changed
+            # Return gr.update() for fields that have changed, else no update
             return (
                 updated_log if has_log_changes else None,  # log_box
                 new_audio if has_audio_changes else None,  # current_audio_path
-                updated_log if has_log_changes else last_log,  # last_log_update
-                new_audio if has_audio_changes else last_audio,  # last_audio_update
-                True  # timer active
+                updated_log if has_log_changes else last_log,     # last_log_update
+                new_audio if has_audio_changes else last_audio    # last_audio_update
             )
 
         def update_audio_player(audio_path, last_audio):
             if audio_path and audio_path != last_audio and os.path.exists(audio_path):
                 return audio_path, audio_path
-            return None, None
+            return gr.update(), gr.update()
 
-        # Timer with a larger interval
         log_timer = gr.Timer(0.5, active=False)
 
         log_timer_fn = log_timer.tick(
             fn=refresh_state,
             inputs=[log_box, generation_pid, current_audio_path, last_log_update, last_audio_update],
-            outputs=[log_box, current_audio_path, last_log_update, last_audio_update, log_timer]
+            outputs=[log_box, current_audio_path, last_log_update, last_audio_update]
         )
 
         log_timer_fn.then(
@@ -445,11 +445,15 @@ def build_gradio_interface():
         )
 
         def activate_timer():
-            return True
+            return gr.update(active=True)
 
         generate_button.click(fn=activate_timer, outputs=[log_timer])
         stop_button.click(fn=activate_timer, outputs=[log_timer])
-
+        
+        def deactivate_timer():
+            return gr.update(active=False)
+        
+        stop_button.click(fn=deactivate_timer, outputs=[log_timer])
         return demo
 
 
