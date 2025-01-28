@@ -155,8 +155,21 @@ Below is the list of available YuE models that you can download by specifying th
 | `YuE-s2-1B-general`          | `m-a-p/YuE-s2-1B-general`          | `/workspace/models/YuE-s2-1B-general`                  |
 | `YuE-upsampler`              | `m-a-p/YuE-upsampler`              | `/workspace/models/YuE-upsampler`                      |
 
-Use the appropriate model keys in the `DOWNLOAD_MODELS` environment variable to download specific models.
+### Model Suffixes Explained
 
+The suffixes in the model keys indicate specific training or optimization techniques applied to the models:
+
+| Suffix | Meaning               | Description                                                                                     |
+|--------|-----------------------|-------------------------------------------------------------------------------------------------|
+| `COT`  | **Chain-of-Thought**  | Models trained with *Chain-of-Thought* to enhance reasoning and logical generation capabilities.|
+| `ICL`  | **In-Context Learning** | Models optimized for *In-Context Learning*, allowing dynamic adaptation based on the provided context.|
+
+**Examples:**
+
+- `YuE-s1-7B-anneal-en-cot`: A model trained with *Chain-of-Thought* techniques.
+- `YuE-s1-7B-anneal-en-icl`: A model optimized for *In-Context Learning*.
+
+These suffixes help users identify the specific capabilities and optimizations of each model variant.
 ### Example: Downloading Specific Models
 
 To download only `YuE-s2-1B-general` and `YuE-s1-7B-anneal-en-cot` models:
