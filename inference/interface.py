@@ -49,6 +49,27 @@ audio_path_queue = queue.Queue()
 process_dict = {}
 process_lock = threading.Lock()
 
+
+custom_log_box_css = """
+#log_box textarea {
+    overflow-y: scroll;
+    max-height: 400px;  /* Set a max height for the log box */
+    white-space: pre-wrap;  /* Preserve line breaks and white spaces */
+    border: 1px solid #ccc;
+    padding: 10px;
+    font-family: monospace;
+    scrollbar-width: thin!important;
+}
+
+#file_explorer {
+max-height: 374px!important;
+}
+
+#file_explorer .file-wrap {
+max-height: 320px!important;
+}
+"""
+
 def get_selected_file(file_paths):
     """
     Handles file selection and prepares it for download.
@@ -59,7 +80,9 @@ def get_selected_file(file_paths):
             return None, "Please select a single file and not a folder."
         if not os.path.exists(file_paths):
             return None, f"File not found: {file_paths}"
-        return file_paths
+        if not file_paths.lower().endswith('.mp3'):
+            return None, f"File is not in .mp3 format: {file_paths}"
+        return file_paths, f"File '{os.path.basename(file_paths)}' ready for download."
 
     # Handle the case when file_paths is a list (multiple files)
     if isinstance(file_paths, list) and file_paths:
@@ -68,9 +91,11 @@ def get_selected_file(file_paths):
             return None, "Please select a single file and not a folder."
         if not os.path.exists(file_path):
             return None, f"File not found: {file_path}"
-        return file_path
+        if not file_path.lower().endswith('.mp3'):
+            return None, f"File is not in .mp3 format: {file_paths}"
+        return file_path, f"File '{os.path.basename(file_paths)}' ready for download."
 
-    return None
+    return None, "Invalid or no file selected."
 
 def read_subprocess_output(proc, log_queue, audio_path_queue):
     """Reads subprocess stdout line by line, placing them into log_queue and audio_path_queue."""
@@ -218,148 +243,140 @@ def update_logs(current_logs):
 
 
 def build_gradio_interface():
-    with gr.Blocks(title="YuE Song Generation Interface") as demo:
-        gr.Markdown("# YuE Song Generation\nEnter your Genre and Lyrics, then generate & listen!")
+    theme = gr.themes.Base()
+    with gr.Blocks(title="YuE: Open Full-song Generation Foundation Model", theme=theme) as demo:
+        gr.Markdown("# YuE - Gradio Interface\nEnter your Genre and Lyrics, then generate & listen!")
 
-        with gr.Row():
-            with gr.Column():
-                stage1_model = gr.Textbox(
-                    label="Stage1 Model",
-                    value=DEFAULT_STAGE1_MODEL,
-                    info="The model checkpoint path or identifier for the Stage 1 model."
-                )
-                stage2_model = gr.Textbox(
-                    label="Stage2 Model",
-                    value=DEFAULT_STAGE2_MODEL,
-                    info="The model checkpoint path or identifier for the Stage 2 model."
-                )
-                tokenizer_model = gr.Textbox(
-                    label="Tokenizer Model",
-                    value=TOKENIZER_MODEL,
-                    info="he model tokenizer path"
-                )
+        with gr.Column():
+            stage1_model = gr.Textbox(
+                label="Stage1 Model",
+                value=DEFAULT_STAGE1_MODEL,
+                info="The model checkpoint path or identifier for the Stage 1 model."
+            )
+            stage2_model = gr.Textbox(
+                label="Stage2 Model",
+                value=DEFAULT_STAGE2_MODEL,
+                info="The model checkpoint path or identifier for the Stage 2 model."
+            )
+            tokenizer_model = gr.Textbox(
+                label="Tokenizer Model",
+                value=TOKENIZER_MODEL,
+                info="he model tokenizer path"
+            )
 
-                # Textboxes for genre and lyrics
-                genre_textarea = gr.Textbox(
-                    label="Genre Text",
-                    lines=4,
-                    placeholder="Example: [Genre] inspiring female uplifting pop airy vocal...",
-                    info="Text containing genre tags that describe the musical style or characteristics (e.g., instrumental, genre, mood, vocal timbre, vocal gender). This is used as part of the generation prompt.",
-                    value=genre_example
-                )
-                lyrics_textarea = gr.Textbox(
-                    label="Lyrics Text",
-                    lines=4,
-                    placeholder="Type the lyrics here...",
-                    info="text file containing the lyrics for the music generation. These lyrics will be processed and split into structured segments to guide the generation process.",
-                    value=lyrics_example
-                )
+            # Textboxes for genre and lyrics
+            genre_textarea = gr.Textbox(
+                label="Genre Text",
+                lines=4,
+                placeholder="Example: [Genre] inspiring female uplifting pop airy vocal...",
+                info="Text containing genre tags that describe the musical style or characteristics (e.g., instrumental, genre, mood, vocal timbre, vocal gender). This is used as part of the generation prompt.",
+                value=genre_example
+            )
+            lyrics_textarea = gr.Textbox(
+                label="Lyrics Text",
+                lines=4,
+                placeholder="Type the lyrics here...",
+                info="Text containing the lyrics for the music generation. These lyrics will be processed and split into structured segments to guide the generation process.",
+                value=lyrics_example
+            )
 
-                run_n_segments = gr.Number(
-                    label="Number of Segments",
-                    value=2,
-                    precision=0,
-                    info="The number of segments to process during the generation."
-                )
-                stage2_batch_size = gr.Number(
-                    label="Stage2 Batch Size",
-                    value=4,
-                    precision=0,
-                    info="The batch size used in Stage 2 inference."
-                )
-                output_dir = gr.Textbox(
-                    label="Output Directory",
-                    value=DEFAULT_OUTPUT_DIR,
-                    info="The directory where generated outputs will be saved."
-                )
-                cuda_idx = gr.Number(
-                    label="CUDA Index",
-                    value=0,
-                    precision=0
-                )
-                max_new_tokens = gr.Number(
-                    label="Max New Tokens",
-                    value=3000,
-                    precision=0,
-                    info="The maximum number of new tokens to generate in one pass during text generation."
-                )
+            run_n_segments = gr.Number(
+                label="Number of Segments",
+                value=2,
+                precision=0,
+                info="The number of segments to process during the generation."
+            )
+            stage2_batch_size = gr.Number(
+                label="Stage2 Batch Size",
+                value=4,
+                precision=0,
+                info="The batch size used in Stage 2 inference."
+            )
+            output_dir = gr.Textbox(
+                label="Output Directory",
+                value=DEFAULT_OUTPUT_DIR,
+                info="The directory where generated outputs will be saved."
+            )
+            cuda_idx = gr.Number(
+                label="CUDA Index",
+                value=0,
+                precision=0
+            )
+            max_new_tokens = gr.Number(
+                label="Max New Tokens",
+                value=3000,
+                precision=0,
+                info="The maximum number of new tokens to generate in one pass during text generation."
+            )
 
-                use_audio_prompt = gr.Checkbox(
-                    label="Use Audio Prompt?",
-                    value=False,
-                    info="If set, the model will use an audio file as a prompt during generation."
-                )
-                audio_prompt_file = gr.File(
-                    label="Upload Audio Prompt",
-                    file_types=["audio"],
-                    visible=False,
-                    file_count="single",  # Ensure that only one file is uploaded,
-                )
-                prompt_start_time = gr.Number(
-                    label="Prompt Start Time (s)",
-                    value=0,
-                    visible=False,
-                    info="The start time in seconds to extract the audio prompt from the given audio file."
-                )
-                prompt_end_time = gr.Number(
-                    label="Prompt End Time (s)",
-                    value=30,
-                    visible=False,
-                    info="The end time in seconds to extract the audio prompt from the given audio file."
-                )
+            use_audio_prompt = gr.Checkbox(
+                label="Use Audio Prompt?",
+                value=False,
+                info="If set, the model will use an audio file as a prompt during generation."
+            )
+            audio_prompt_file = gr.File(
+                label="Upload Audio Prompt",
+                file_types=["audio"],
+                visible=False,
+                file_count="single",  # Ensure that only one file is uploaded,
+            )
+            prompt_start_time = gr.Number(
+                label="Prompt Start Time (s)",
+                value=0,
+                visible=False,
+                info="The start time in seconds to extract the audio prompt from the given audio file."
+            )
+            prompt_end_time = gr.Number(
+                label="Prompt End Time (s)",
+                value=30,
+                visible=False,
+                info="The end time in seconds to extract the audio prompt from the given audio file."
+            )
 
-                def toggle_audio_prompt(checked):
-                    return [
-                        gr.update(visible=checked),
-                        gr.update(visible=checked),
-                        gr.update(visible=checked)
-                    ]
+            def toggle_audio_prompt(checked):
+                return [
+                    gr.update(visible=checked),
+                    gr.update(visible=checked),
+                    gr.update(visible=checked)
+                ]
 
-                use_audio_prompt.change(
-                    fn=toggle_audio_prompt,
-                    inputs=use_audio_prompt,
-                    outputs=[audio_prompt_file, prompt_start_time, prompt_end_time]
-                )
+            use_audio_prompt.change(
+                fn=toggle_audio_prompt,
+                inputs=use_audio_prompt,
+                outputs=[audio_prompt_file, prompt_start_time, prompt_end_time]
+            )
 
-                generate_button = gr.Button("Generate Music")
-                stop_button = gr.Button("Stop", visible=False)
+            generate_button = gr.Button("Generate Music")
+            stop_button = gr.Button("Stop", visible=False)
 
-            with gr.Column():
-                log_box = gr.Textbox(
-                    label="Logs",
-                    value="",
-                    lines=20,
-                    max_lines=30,
-                    interactive=False
-                )
-                
-                explorer = gr.FileExplorer(root_dir=DEFAULT_OUTPUT_DIR, interactive=True, label="File Explorer", file_count="single", elem_id="file_explorer")     
-                with gr.Column():   
-                    gr.Markdown("### Select a single file from the file explorer for download.")
-                    # download_status = gr.Textbox(label="Single File Download Status", interactive=False)
-                    # download_file = gr.File(label="Download Single File", interactive=False)
-                
-                # Section to show audio and allow download
-                audio_player = gr.Audio(
-                    label="Generated Audio",
-                    type="filepath",
-                    value=None,
-                    interactive=False
-                )
-                
-                # Event: When a file is selected in the explorer
-                explorer.change(
-                    fn=get_selected_file,
-                    inputs=[explorer],
-                    outputs=[audio_player],
-                )
-                        
-                   
-                # audio_downloader = gr.File(
-                #     label="Download Generated Audio",
-                #     interactive=False,
-                #     value=None
-                # )
+            log_box = gr.Textbox(
+                label="Logs",
+                value="",
+                lines=20,
+                max_lines=30,
+                interactive=False
+            )
+            
+            explorer = gr.FileExplorer(root_dir=DEFAULT_OUTPUT_DIR, interactive=True, label="File Explorer", file_count="single", elem_id="file_explorer")     
+            with gr.Column():   
+                gr.Markdown("### Select a single file from the file explorer for download.")
+            
+            audio_status = gr.Textbox(label="File Status", interactive=False)
+             
+            # Section to show audio and allow download
+            audio_player = gr.Audio(
+                label="Generated Audio",
+                type="filepath",
+                value=None,
+                interactive=False
+            )
+            
+            # Event: When a file is selected in the explorer
+            explorer.change(
+                fn=get_selected_file,
+                inputs=[explorer],
+                outputs=[audio_player, audio_status],
+            )
 
         # Hidden states
         generation_pid = gr.State(None)
@@ -484,12 +501,6 @@ def build_gradio_interface():
                 updated_log if has_log_changes else last_log,     # last_log_update
                 new_audio if has_audio_changes else last_audio    # last_audio_update
             )
-
-
-        def update_audio_player(audio_path, last_audio):
-            if audio_path and audio_path != last_audio and os.path.exists(audio_path):
-                return audio_path, audio_path
-            return None, None
 
         log_timer = gr.Timer(0.5, active=False)
 

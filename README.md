@@ -4,6 +4,18 @@ Welcome to the **YuE Interface**, a robust and user-friendly Docker-based soluti
 
 > **Note**: This project is a fork of the official [YuE repository](https://github.com/multimodal-art-projection/YuE).
 
+
+### Note
+
+If you have any very complex issues regarding the interface open a issue or send me a message on my civitiai profile.
+
+[My Profile](https://civitai.com/user/alissonerdx)
+
+## Gradio Interface
+
+![preview gradio](/preview.png)
+
+
 ## Features
 
 - **Docker Image**: Pre-configured Docker image for easy deployment.
