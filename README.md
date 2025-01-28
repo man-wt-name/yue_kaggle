@@ -66,7 +66,7 @@ alissonpereiraanjos/yue-interface:latest
 
 To simplify the setup and management of the YuE Interface, you can use Docker Compose. Docker Compose allows you to define and run multi-container Docker applications with a single configuration file (`docker-compose.yml`). Below are the steps to get started.
 
-> **Note**: This file **docker-compose.yml** already exists in the repository root, you just need to replace the directory mapping and run the command, see the explanation below.
+> **Note**: This **docker-compose.yml** file already exists in the root of the repository, you just need to download or copy the file and replace the directory mapping and run the command in the same directory as the file, see the explanation below.
 
 ### Docker Compose Configuration
 
