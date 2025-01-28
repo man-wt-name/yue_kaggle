@@ -81,7 +81,7 @@ export PATH="$REPO_DIR:$REPO_DIR/inference/:$REPO_DIR/inference/xcodec_mini_infe
 echo $PATH
 echo $PYTHONPATH
 
-cd /workspace/YuE-Interface
+cd /workspace/YuE-Interface/inference
 
 # Use conda python instead of system python
 echo "Starting Gradio interface..."
