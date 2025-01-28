@@ -19,6 +19,7 @@ DEFAULT_STAGE1_MODEL = "/workspace/models/YuE-s1-7B-anneal-en-cot"
 DEFAULT_STAGE2_MODEL = "/workspace/models/YuE-s2-1B-general"
 TOKENIZER_MODEL = "/workspace/YuE-Interface/inference/mm_tokenizer_v0.2_hf/tokenizer.model"
 
+
 # Output directory
 DEFAULT_OUTPUT_DIR = "/workspace/outputs"
 
@@ -100,8 +101,13 @@ def generate_song(
         "--output_dir", output_dir,
         "--cuda_idx", str(cuda_idx),
         "--max_new_tokens", str(max_new_tokens),
+        "--basic_model_config", f"{PROJECT_DIR}/inference/xcodec_mini_infer/final_ckpt/config.yaml",
+        "--resume_path", f"{PROJECT_DIR}/inference/xcodec_mini_infer/final_ckpt/ckpt_00360000.pth",
+        "--config_path", f"{PROJECT_DIR}/inference/xcodec_mini_infer/decoders/config.yaml",
+        "--vocal_decoder_path", f"{PROJECT_DIR}/inference/xcodec_mini_infer/decoders/decoder_131000.pth",
+        "--inst_decoder_path", f"{PROJECT_DIR}/inference/xcodec_mini_infer/decoders/decoder_151000.pth"
     ]
-
+    
     if use_audio_prompt and audio_prompt_path:
         cmd += [
             "--use_audio_prompt",

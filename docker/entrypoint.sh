@@ -32,6 +32,17 @@ if [ ! -f "$INIT_MARKER" ]; then
 
     echo "Installing dependencies from requirements.txt..."
     pip install --no-cache-dir -r $REPO_DIR/requirements.txt
+    
+    SOURCE_DEST=(${MODELS[0]//:/ })
+    SOURCE="${SOURCE_DEST[0]}"
+    DESTINATION="${SOURCE_DEST[1]}"
+
+    if [ ! -d "$DESTINATION" ]; then
+        echo "Downloading model: $MODEL from $SOURCE to $DESTINATION"
+        huggingface-cli download "$SOURCE" --local-dir "$DESTINATION"
+    else
+        echo "Skipping the model $MODEL because it already exists in $DESTINATION."
+    fi
 
     if [ "$DOWNLOAD_MODELS" != "false" ]; then
         echo "Downloading selected models..."
