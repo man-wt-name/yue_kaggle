@@ -7,6 +7,7 @@ import gradio as gr
 import time
 import tempfile
 import glob
+import sys
 
 # -------------------------------------------------
 # If you are using Conda, set these paths accordingly
@@ -19,6 +20,8 @@ DEFAULT_STAGE1_MODEL = "/workspace/models/YuE-s1-7B-anneal-en-cot"
 DEFAULT_STAGE2_MODEL = "/workspace/models/YuE-s2-1B-general"
 TOKENIZER_MODEL = "/workspace/YuE-Interface/inference/mm_tokenizer_v0.2_hf/tokenizer.model"
 
+sys.path.append(os.path.join(f"{PROJECT_DIR}/inference", 'xcodec_mini_infer'))
+sys.path.append(os.path.join(f"{PROJECT_DIR}/inference", 'xcodec_mini_infer', 'descriptaudiocodec'))
 
 # Output directory
 DEFAULT_OUTPUT_DIR = "/workspace/outputs"

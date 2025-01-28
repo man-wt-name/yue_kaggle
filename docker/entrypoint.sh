@@ -76,8 +76,7 @@ else
 fi
 
 echo "Adding environment variables"
-export PYTHONPATH="$REPO_DIR:$REPO_DIR/inference/:$PYTHONPATH"
-export PATH="$REPO_DIR:$PATH"
+export PATH="$REPO_DIR:$REPO_DIR/inference/:$REPO_DIR/inference/xcodec_mini_infer:$REPO_DIR/inference/xcodec_mini_infer:$REPO_DIR/inference/xcodec_mini_infer/descriptaudiocodec:$PATH"
 
 echo $PATH
 echo $PYTHONPATH
