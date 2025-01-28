@@ -8,6 +8,8 @@ import time
 import tempfile
 import glob
 import sys
+import re
+import shutil  # Added to copy files
 
 # -------------------------------------------------
 # If you are using Conda, set these paths accordingly
@@ -25,19 +27,34 @@ sys.path.append(os.path.join(f"{PROJECT_DIR}/inference", 'xcodec_mini_infer', 'd
 
 # Output directory
 DEFAULT_OUTPUT_DIR = "/workspace/outputs"
+os.makedirs(DEFAULT_OUTPUT_DIR, exist_ok=True)
+
+DEFAULT_INPUT_DIR = "/workspace/inputs"
+os.makedirs(DEFAULT_INPUT_DIR, exist_ok=True)
 
 # -------------------------------------------------
 
+# Queues for logs and audio paths
+log_queue = queue.Queue()
+audio_path_queue = queue.Queue()
+
 process_dict = {}
 process_lock = threading.Lock()
-log_queue = queue.Queue()
 
 
-def read_subprocess_output(proc, log_queue):
-    """Reads subprocess stdout line by line, placing them into log_queue."""
+def read_subprocess_output(proc, log_queue, audio_path_queue):
+    """Reads subprocess stdout line by line, placing them into log_queue and audio_path_queue."""
     for line in iter(proc.stdout.readline, b''):
         decoded_line = line.decode("utf-8", errors="replace")
         log_queue.put(decoded_line)
+        
+        # Detect the line containing "Created mix:"
+        if "Created mix:" in decoded_line:
+            # Extract the audio path using regex
+            match = re.search(r"Created mix:\s*(\S+)", decoded_line)
+            if match:
+                audio_path = match.group(1)
+                audio_path_queue.put(audio_path)
     proc.stdout.close()
     proc.wait()
     with process_lock:
@@ -67,7 +84,7 @@ def stop_generation(pid):
         with process_lock:
             if pid in process_dict:
                 del process_dict[pid]
-        return "Inference stopped."
+        return "Inference stopped successfully."
     except Exception as e:
         return f"Error stopping process: {str(e)}"
 
@@ -84,12 +101,24 @@ def generate_song(
     cuda_idx,
     max_new_tokens,
     use_audio_prompt,
-    audio_prompt_path,
+    audio_prompt_file,
     prompt_start_time,
     prompt_end_time
 ):
     """Spawns infer.py to generate music, capturing logs in real time."""
     os.makedirs(output_dir, exist_ok=True)
+
+    # If using an audio prompt, copy the file to DEFAULT_INPUT_DIR
+    if use_audio_prompt and audio_prompt_file is not None:
+        # Check if audio_prompt_file is a valid path
+        if isinstance(audio_prompt_file, str):
+            audio_filename = os.path.basename(audio_prompt_file)
+            saved_audio_path = os.path.join(DEFAULT_INPUT_DIR, audio_filename)
+            shutil.copy(audio_prompt_file, saved_audio_path)
+        else:
+            return "Invalid audio prompt file format.", None
+    else:
+        saved_audio_path = ""
 
     # Build base command
     cmd = [
@@ -111,10 +140,10 @@ def generate_song(
         "--inst_decoder_path", f"{PROJECT_DIR}/inference/xcodec_mini_infer/decoders/decoder_151000.pth"
     ]
     
-    if use_audio_prompt and audio_prompt_path:
+    if use_audio_prompt and saved_audio_path:
         cmd += [
             "--use_audio_prompt",
-            "--audio_prompt_path", audio_prompt_path,
+            "--audio_prompt_path", saved_audio_path,
             "--prompt_start_time", str(prompt_start_time),
             "--prompt_end_time", str(prompt_end_time)
         ]
@@ -142,7 +171,7 @@ def generate_song(
         process_dict[proc.pid] = proc
 
     # Thread to read logs
-    thread = threading.Thread(target=read_subprocess_output, args=(proc, log_queue), daemon=True)
+    thread = threading.Thread(target=read_subprocess_output, args=(proc, log_queue, audio_path_queue), daemon=True)
     thread.start()
 
     return f"Inference started. Outputs will be saved in {output_dir}...", proc.pid
@@ -156,19 +185,9 @@ def update_logs(current_logs):
     return current_logs + new_text
 
 
-def find_newest_wav(output_dir):
-    """Return the newest .wav file in output_dir, or None if not found."""
-    wav_files = glob.glob(os.path.join(output_dir, "*.wav"))
-    if not wav_files:
-        return None
-    # Sort by creation time descending
-    newest = max(wav_files, key=os.path.getctime)
-    return newest
-
-
 def build_gradio_interface():
     with gr.Blocks(title="YuE Song Generation Interface") as demo:
-        gr.Markdown("# YuE Song Generation\nWrite your Genre and Lyrics then generate & listen!")
+        gr.Markdown("# YuE Song Generation\nEnter your Genre and Lyrics, then generate & listen!")
 
         with gr.Row():
             with gr.Column():
@@ -185,20 +204,20 @@ def build_gradio_interface():
                     value=TOKENIZER_MODEL
                 )
 
-                # TextAreas for genre and lyrics
+                # Textboxes for genre and lyrics
                 genre_textarea = gr.Textbox(
-                    label="Genre text",
+                    label="Genre Text",
                     lines=4,
                     placeholder="Example: [Genre] inspiring female uplifting pop airy vocal..."
                 )
                 lyrics_textarea = gr.Textbox(
-                    label="Lyrics text",
+                    label="Lyrics Text",
                     lines=4,
                     placeholder="Type the lyrics here..."
                 )
 
                 run_n_segments = gr.Number(
-                    label="Number of segments",
+                    label="Number of Segments",
                     value=2,
                     precision=0
                 )
@@ -226,10 +245,11 @@ def build_gradio_interface():
                     label="Use Audio Prompt?",
                     value=False
                 )
-                audio_prompt_path = gr.Textbox(
-                    label="Audio Prompt Path",
-                    value="",
-                    visible=False
+                audio_prompt_file = gr.File(
+                    label="Upload Audio Prompt",
+                    file_types=["audio"],
+                    visible=False,
+                    file_count="single"  # Ensure that only one file is uploaded
                 )
                 prompt_start_time = gr.Number(
                     label="Prompt Start Time (s)",
@@ -252,7 +272,7 @@ def build_gradio_interface():
                 use_audio_prompt.change(
                     fn=toggle_audio_prompt,
                     inputs=use_audio_prompt,
-                    outputs=[audio_prompt_path, prompt_start_time, prompt_end_time]
+                    outputs=[audio_prompt_file, prompt_start_time, prompt_end_time]
                 )
 
                 generate_button = gr.Button("Generate Music")
@@ -266,7 +286,7 @@ def build_gradio_interface():
                     max_lines=30,
                     interactive=False
                 )
-                # Section to show audio and let user download
+                # Section to show audio and allow download
                 audio_player = gr.Audio(
                     label="Generated Audio",
                     type="filepath",
@@ -295,7 +315,7 @@ def build_gradio_interface():
             cuda_idx,
             max_new_tokens,
             use_audio_prompt,
-            audio_prompt_path,
+            audio_prompt_file,
             prompt_start_time,
             prompt_end_time
         ):
@@ -304,7 +324,7 @@ def build_gradio_interface():
             with process_lock:
                 if process_dict:
                     return (
-                        "Another process is running. Stop it before starting a new one.",
+                        "Another process is running. Please stop it before starting a new one.",
                         None,
                         gr.update(visible=True),
                         gr.update(visible=False),
@@ -312,8 +332,7 @@ def build_gradio_interface():
                         None
                     )
 
-            # Write the genre_text and lyrics_text into temporary .txt files:
-            import tempfile
+            # Writes genre_text and lyrics_text to temporary .txt files
             def write_temp_file(content, suffix=".txt"):
                 fd, path = tempfile.mkstemp(suffix=suffix)
                 with os.fdopen(fd, "w", encoding="utf-8") as f:
@@ -335,11 +354,11 @@ def build_gradio_interface():
                 cuda_idx,
                 max_new_tokens,
                 use_audio_prompt,
-                audio_prompt_path,
+                audio_prompt_file,
                 prompt_start_time,
                 prompt_end_time
             )
-            # If generation started successfully, hide "Generate" and show "Stop"
+            # If the generation started successfully, hide "Generate" and show "Stop"
             if pid:
                 return (msg, pid, gr.update(visible=False), gr.update(visible=True), None, None)
             else:
@@ -359,7 +378,7 @@ def build_gradio_interface():
                 cuda_idx,
                 max_new_tokens,
                 use_audio_prompt,
-                audio_prompt_path,
+                audio_prompt_file,
                 prompt_start_time,
                 prompt_end_time
             ],
@@ -367,7 +386,7 @@ def build_gradio_interface():
         )
 
         def on_stop_click(pid):
-            """Triggered when user clicks 'Stop'."""
+            """Triggered when the user clicks 'Stop'."""
             status = stop_generation(pid)
             return (status, None, gr.update(visible=True), gr.update(visible=False), None, None)
 
@@ -377,63 +396,64 @@ def build_gradio_interface():
             outputs=[log_box, generation_pid, generate_button, stop_button, audio_player, audio_downloader]
         )
 
-        # Timer to update logs + check if process ended
-        def refresh_state(log_text, pid, old_audio):
-            # 1) Update logs
-            updated_logs = update_logs(log_text)
+        last_log_update = gr.State("")
+        last_audio_update = gr.State(None)
 
-            # 2) If the process is done (pid not in process_dict), load the newest wav
-            newest_audio = old_audio
-            with process_lock:
-                # If process has ended (pid not in dict or pid is None)
-                if pid and pid not in process_dict:
-                    # The generation must be complete
-                    found_wav = find_newest_wav(output_dir.value)
-                    if found_wav and found_wav != old_audio:
-                        newest_audio = found_wav
+        def refresh_state(log_text, pid, old_audio, last_log, last_audio):
+            # Collect all new logs
+            new_logs = ""
+            while not log_queue.empty():
+                new_logs += log_queue.get()
+            
+            # Collect new audio if available
+            new_audio = old_audio
+            while not audio_path_queue.empty():
+                new_audio = audio_path_queue.get()
 
-            return updated_logs, newest_audio
+            # Check for real changes
+            updated_log = log_text + new_logs if new_logs else log_text
+            has_log_changes = updated_log != last_log
+            has_audio_changes = new_audio != last_audio and new_audio is not None
 
-        # This timer triggers every second, updating logs and the audio path if generation is done
+            # Return None for fields that have not changed
+            return (
+                updated_log if has_log_changes else None,  # log_box
+                new_audio if has_audio_changes else None,  # current_audio_path
+                updated_log if has_log_changes else last_log,  # last_log_update
+                new_audio if has_audio_changes else last_audio,  # last_audio_update
+                True  # timer active
+            )
+
+        def update_audio_player(audio_path, last_audio):
+            if audio_path and audio_path != last_audio and os.path.exists(audio_path):
+                return audio_path, audio_path
+            return None, None
+
+        # Timer with a larger interval
         log_timer = gr.Timer(0.5, active=False)
 
         log_timer_fn = log_timer.tick(
             fn=refresh_state,
-            inputs=[log_box, generation_pid, current_audio_path],
-            outputs=[log_box, current_audio_path]
+            inputs=[log_box, generation_pid, current_audio_path, last_log_update, last_audio_update],
+            outputs=[log_box, current_audio_path, last_log_update, last_audio_update, log_timer]
         )
-
-        # Then we chain a function to update the UI Audio and Download if there's a new file
-        def update_audio_player(audio_path):
-            # If no path, do nothing
-            if not audio_path:
-                return gr.update(), gr.update()
-            # Otherwise, set the audio player and file for download
-            return audio_path, audio_path
 
         log_timer_fn.then(
             fn=update_audio_player,
-            inputs=[current_audio_path],
+            inputs=[current_audio_path, last_audio_update],
             outputs=[audio_player, audio_downloader]
         )
 
-        # We start the timer only after user clicks "Generate" or "Stop"
         def activate_timer():
-            return gr.update(active=True)
-
-        def deactivate_timer():
-            return gr.update(active=False)
+            return True
 
         generate_button.click(fn=activate_timer, outputs=[log_timer])
-        stop_button.click(fn=activate_timer, outputs=[log_timer])  # keep logs going
+        stop_button.click(fn=activate_timer, outputs=[log_timer])
 
-        # If you prefer stopping logs when user stops generation, uncomment below
-        # stop_button.click(fn=deactivate_timer, outputs=[log_timer])
-
-    return demo
+        return demo
 
 
 if __name__ == "__main__":
     interface = build_gradio_interface()
-    # Adjust port as needed
+    # Adjust the port as needed
     interface.launch(server_name="0.0.0.0", server_port=7860)
