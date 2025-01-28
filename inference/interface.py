@@ -32,6 +32,14 @@ os.makedirs(DEFAULT_OUTPUT_DIR, exist_ok=True)
 DEFAULT_INPUT_DIR = "/workspace/inputs"
 os.makedirs(DEFAULT_INPUT_DIR, exist_ok=True)
 
+lyrics_example_file = open(f"{PROJECT_DIR}/inference/prompt_examples/lyrics.txt",mode='r')
+lyrics_example = lyrics_example_file.read()
+lyrics_example_file.close()
+
+genre_example_file = open(f"{PROJECT_DIR}/inference/prompt_examples/genre.txt",mode='r')
+genre_example = genre_example_file.read()
+genre_example_file.close()
+
 # -------------------------------------------------
 
 # Queues for logs and audio paths
@@ -41,6 +49,28 @@ audio_path_queue = queue.Queue()
 process_dict = {}
 process_lock = threading.Lock()
 
+def get_selected_file(file_paths):
+    """
+    Handles file selection and prepares it for download.
+    """
+    # Handle the case when file_paths is a string (single file)
+    if isinstance(file_paths, str):
+        if os.path.isdir(file_paths):
+            return None, "Please select a single file and not a folder."
+        if not os.path.exists(file_paths):
+            return None, f"File not found: {file_paths}"
+        return file_paths
+
+    # Handle the case when file_paths is a list (multiple files)
+    if isinstance(file_paths, list) and file_paths:
+        file_path = file_paths[0]  # Use the first file
+        if os.path.isdir(file_path):
+            return None, "Please select a single file and not a folder."
+        if not os.path.exists(file_path):
+            return None, f"File not found: {file_path}"
+        return file_path
+
+    return None
 
 def read_subprocess_output(proc, log_queue, audio_path_queue):
     """Reads subprocess stdout line by line, placing them into log_queue and audio_path_queue."""
@@ -195,42 +225,52 @@ def build_gradio_interface():
             with gr.Column():
                 stage1_model = gr.Textbox(
                     label="Stage1 Model",
-                    value=DEFAULT_STAGE1_MODEL
+                    value=DEFAULT_STAGE1_MODEL,
+                    info="The model checkpoint path or identifier for the Stage 1 model."
                 )
                 stage2_model = gr.Textbox(
                     label="Stage2 Model",
-                    value=DEFAULT_STAGE2_MODEL
+                    value=DEFAULT_STAGE2_MODEL,
+                    info="The model checkpoint path or identifier for the Stage 2 model."
                 )
                 tokenizer_model = gr.Textbox(
                     label="Tokenizer Model",
-                    value=TOKENIZER_MODEL
+                    value=TOKENIZER_MODEL,
+                    info="he model tokenizer path"
                 )
 
                 # Textboxes for genre and lyrics
                 genre_textarea = gr.Textbox(
                     label="Genre Text",
                     lines=4,
-                    placeholder="Example: [Genre] inspiring female uplifting pop airy vocal..."
+                    placeholder="Example: [Genre] inspiring female uplifting pop airy vocal...",
+                    info="Text containing genre tags that describe the musical style or characteristics (e.g., instrumental, genre, mood, vocal timbre, vocal gender). This is used as part of the generation prompt.",
+                    value=genre_example
                 )
                 lyrics_textarea = gr.Textbox(
                     label="Lyrics Text",
                     lines=4,
-                    placeholder="Type the lyrics here..."
+                    placeholder="Type the lyrics here...",
+                    info="text file containing the lyrics for the music generation. These lyrics will be processed and split into structured segments to guide the generation process.",
+                    value=lyrics_example
                 )
 
                 run_n_segments = gr.Number(
                     label="Number of Segments",
                     value=2,
-                    precision=0
+                    precision=0,
+                    info="The number of segments to process during the generation."
                 )
                 stage2_batch_size = gr.Number(
                     label="Stage2 Batch Size",
                     value=4,
-                    precision=0
+                    precision=0,
+                    info="The batch size used in Stage 2 inference."
                 )
                 output_dir = gr.Textbox(
                     label="Output Directory",
-                    value=DEFAULT_OUTPUT_DIR
+                    value=DEFAULT_OUTPUT_DIR,
+                    info="The directory where generated outputs will be saved."
                 )
                 cuda_idx = gr.Number(
                     label="CUDA Index",
@@ -240,28 +280,32 @@ def build_gradio_interface():
                 max_new_tokens = gr.Number(
                     label="Max New Tokens",
                     value=3000,
-                    precision=0
+                    precision=0,
+                    info="The maximum number of new tokens to generate in one pass during text generation."
                 )
 
                 use_audio_prompt = gr.Checkbox(
                     label="Use Audio Prompt?",
-                    value=False
+                    value=False,
+                    info="If set, the model will use an audio file as a prompt during generation."
                 )
                 audio_prompt_file = gr.File(
                     label="Upload Audio Prompt",
                     file_types=["audio"],
                     visible=False,
-                    file_count="single"  # Ensure that only one file is uploaded
+                    file_count="single",  # Ensure that only one file is uploaded,
                 )
                 prompt_start_time = gr.Number(
                     label="Prompt Start Time (s)",
                     value=0,
-                    visible=False
+                    visible=False,
+                    info="The start time in seconds to extract the audio prompt from the given audio file."
                 )
                 prompt_end_time = gr.Number(
                     label="Prompt End Time (s)",
                     value=30,
-                    visible=False
+                    visible=False,
+                    info="The end time in seconds to extract the audio prompt from the given audio file."
                 )
 
                 def toggle_audio_prompt(checked):
@@ -288,6 +332,13 @@ def build_gradio_interface():
                     max_lines=30,
                     interactive=False
                 )
+                
+                explorer = gr.FileExplorer(root_dir=DEFAULT_OUTPUT_DIR, interactive=True, label="File Explorer", file_count="single", elem_id="file_explorer")     
+                with gr.Column():   
+                    gr.Markdown("### Select a single file from the file explorer for download.")
+                    # download_status = gr.Textbox(label="Single File Download Status", interactive=False)
+                    # download_file = gr.File(label="Download Single File", interactive=False)
+                
                 # Section to show audio and allow download
                 audio_player = gr.Audio(
                     label="Generated Audio",
@@ -295,11 +346,20 @@ def build_gradio_interface():
                     value=None,
                     interactive=False
                 )
-                audio_downloader = gr.File(
-                    label="Download Generated Audio",
-                    interactive=False,
-                    value=None
+                
+                # Event: When a file is selected in the explorer
+                explorer.change(
+                    fn=get_selected_file,
+                    inputs=[explorer],
+                    outputs=[audio_player],
                 )
+                        
+                   
+                # audio_downloader = gr.File(
+                #     label="Download Generated Audio",
+                #     interactive=False,
+                #     value=None
+                # )
 
         # Hidden states
         generation_pid = gr.State(None)
@@ -362,9 +422,9 @@ def build_gradio_interface():
             )
             # If the generation started successfully, hide "Generate" and show "Stop"
             if pid:
-                return (msg, pid, gr.update(visible=False), gr.update(visible=True), None, None)
+                return (msg, pid, gr.update(visible=False), gr.update(visible=True))
             else:
-                return (msg, None, gr.update(visible=True), gr.update(visible=False), None, None)
+                return (msg, None, gr.update(visible=True), gr.update(visible=False))
 
         generate_button.click(
             fn=on_generate_click,
@@ -384,7 +444,7 @@ def build_gradio_interface():
                 prompt_start_time,
                 prompt_end_time
             ],
-            outputs=[log_box, generation_pid, generate_button, stop_button, audio_player, audio_downloader]
+            outputs=[log_box, generation_pid, generate_button, stop_button]
         )
 
         def on_stop_click(pid):
@@ -395,7 +455,7 @@ def build_gradio_interface():
         stop_button.click(
             fn=on_stop_click,
             inputs=[generation_pid],
-            outputs=[log_box, generation_pid, generate_button, stop_button, audio_player, audio_downloader]
+            outputs=[log_box, generation_pid, generate_button, stop_button]
         )
 
         last_log_update = gr.State("")
@@ -425,6 +485,7 @@ def build_gradio_interface():
                 new_audio if has_audio_changes else last_audio    # last_audio_update
             )
 
+
         def update_audio_player(audio_path, last_audio):
             if audio_path and audio_path != last_audio and os.path.exists(audio_path):
                 return audio_path, audio_path
@@ -432,16 +493,10 @@ def build_gradio_interface():
 
         log_timer = gr.Timer(0.5, active=False)
 
-        log_timer_fn = log_timer.tick(
+        log_timer.tick(
             fn=refresh_state,
             inputs=[log_box, generation_pid, current_audio_path, last_log_update, last_audio_update],
             outputs=[log_box, current_audio_path, last_log_update, last_audio_update]
-        )
-
-        log_timer_fn.then(
-            fn=update_audio_player,
-            inputs=[current_audio_path, last_audio_update],
-            outputs=[audio_player, audio_downloader]
         )
 
         def activate_timer():
@@ -460,4 +515,4 @@ def build_gradio_interface():
 if __name__ == "__main__":
     interface = build_gradio_interface()
     # Adjust the port as needed
-    interface.launch(server_name="0.0.0.0", server_port=7860)
+    interface.launch(server_name="0.0.0.0", server_port=7860, allowed_paths=["/workspace", ".", os.getcwd()])
