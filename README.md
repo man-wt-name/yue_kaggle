@@ -28,7 +28,7 @@ If you have any very complex issues regarding the interface open a issue or send
 
 ## Prerequisites
 
-### Docker
+### Docker/Docker Compose
 
 Ensure you have Docker installed on your system. Follow the official Docker installation guides for your platform:
 
@@ -61,7 +61,110 @@ alissonpereiraanjos/yue-interface:latest
   - Set to `all` to download all available models.
   - Alternatively, specify a comma-separated list of model keys to download specific models (e.g., `DOWNLOAD_MODELS=YuE-s2-1B-general,YuE-s1-7B-anneal-en-cot`).
 
+
+## Using Docker Compose
+
+To simplify the setup and management of the YuE Interface, you can use Docker Compose. Docker Compose allows you to define and run multi-container Docker applications with a single configuration file (`docker-compose.yml`). Below are the steps to get started.
+
+> **Note**: This file **docker-compose.yml** already exists in the repository root, you just need to replace the directory mapping and run the command, see the explanation below.
+
+### Docker Compose Configuration
+
+```yaml
+version: '3.8'
+
+services:
+  yue-interface:
+    image: alissonpereiraanjos/yue-interface:latest  # Docker image for YuE Interface
+    container_name: yue-interface  # Name of the container
+    restart: unless-stopped  # Restart policy: always restart unless manually stopped
+    ports:
+      - "7860:7860"  # Map port 7860 (Gradio UI) to the host
+      - "8888:8888"  # Optional: Map an additional port (JupyterLab)
+    environment:
+      - DOWNLOAD_MODELS=all  # Download all models. Replace "all" with specific model keys if needed.
+                             # Example: DOWNLOAD_MODELS=YuE-s2-1B-general,YuE-s1-7B-anneal-en-cot
+    volumes:
+      - /path/to/models:/workspace/models  # Map the host's model directory to the container
+      - /path/to/outputs:/workspace/outputs  # Map the host's output directory to the container
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]  # Enable GPU support (requires NVIDIA GPU and drivers)
+```
+
+### Explanation of the Configuration
+
+- **`image`**: Specifies the Docker image to use (`alissonpereiraanjos/yue-interface:latest`).
+- **`container_name`**: Sets a name for the container (`yue-interface`).
+- **`restart: unless-stopped`**: Ensures the container restarts automatically unless manually stopped.
+- **`ports`**: Maps container ports to the host:
+  - `7860:7860`: Port for accessing the Gradio UI.
+  - `8888:8888`: Optional additional port (JupyterLab).
+- **`environment`**: Defines environment variables:
+  - `DOWNLOAD_MODELS=all`: Downloads all available models. Replace `all` with specific model keys (e.g., `YuE-s2-1B-general,YuE-s1-7B-anneal-en-cot`) to download only selected models.
+- **`volumes`**: Maps host directories to the container:
+  - `/path/to/models:/workspace/models`: Directory where models will be stored.
+  - `/path/to/outputs:/workspace/outputs`: Directory where generated outputs will be saved.
+  - Replace `/path/to/models` and `/path/to/outputs` with the actual paths on your system.
+- **`deploy.resources.reservations.devices`**: Enables GPU support in the container (requires NVIDIA GPU and drivers).
+
+### How to Use Docker Compose
+
+**Run Docker Compose**: Navigate to the directory where the `docker-compose.yml` file is saved and run:
+
+   ```bash
+   docker-compose up -d
+   ```
+
+   The `-d` flag starts the container in detached mode (background).
+
+4. **Access the Interface**: Once the container is running, access the Gradio UI at `http://localhost:7860`.
+
+### Useful Commands
+
+- **Stop the container**:
+
+  ```bash
+  docker-compose down
+  ```
+
+- **View logs**:
+
+  ```bash
+  docker-compose logs -f
+  ```
+
+- **Update the image**:
+
+  ```bash
+  docker-compose pull
+  docker-compose up -d
+  ```
+
+### Customization
+
+- **Specific models**: To download only specific models, modify the `DOWNLOAD_MODELS` environment variable in the `docker-compose.yml` file. For example:
+
+  ```yaml
+  environment:
+    - DOWNLOAD_MODELS=YuE-s2-1B-general,YuE-s1-7B-anneal-en-cot
+  ```
+
+- **Different ports**: If you need to use different ports, adjust the port mappings under the `ports` section.
+
+### Notes
+
+- Ensure the **NVIDIA Container Toolkit** is installed and properly configured on your system for GPU support.
+- If you're using Windows, replace the volume paths with Windows-style paths, such as `D:\AI\yue\models:/workspace/models`.
+
+With Docker Compose, you can easily manage and deploy the YuE Interface with minimal setup! 🚀
+
 ## How to Run using Docker
+
+### You can also not use docker compose and do everything manually just using docker.
+
 
 ### Basic Run Command
 
@@ -203,6 +306,9 @@ docker pull alissonpereiraanjos/yue-interface:latest
 ```
 
 **Note**: Always update the image before running the container to ensure you have the latest features and fixes. This is especially important when deploying on RunPod, as it pulls the latest image upon creating a new pod.
+
+
+
 
 ## Running on RunPod
 
