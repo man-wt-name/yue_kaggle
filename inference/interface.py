@@ -73,7 +73,7 @@ max-height: 320px!important;
 js = """
 function createLink() {
 let baseUrl = window.location.origin;
-baseUrl = baseUrl.replace(":7860", ":8080");
+baseUrl = baseUrl.replace("7860", "8080");
 const tagLink = `${baseUrl}/repo/wav_top_200_tags.json`;
 document.getElementById("tags_link").href = tagLink;
 }
