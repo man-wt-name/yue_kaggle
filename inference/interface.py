@@ -70,6 +70,15 @@ max-height: 320px!important;
 }
 """
 
+js = """
+function createLink() {
+let baseUrl = window.location.origin;
+baseUrl = baseUrl.replace(":7860", ":8080");
+const tagLink = `${baseUrl}/repo/wav_top_200_tags.json`;
+document.getElementById("tags_link").href = tagLink;
+}
+"""
+
 def get_selected_file(file_paths):
     """
     Handles file selection and prepares it for download.
@@ -246,10 +255,11 @@ def update_logs(current_logs):
 
 def build_gradio_interface():
     theme = gr.themes.Base()
-    with gr.Blocks(title="YuE: Open Full-song Generation Foundation Model", theme=theme) as demo:
+    with gr.Blocks(title="YuE: Open Full-song Generation Foundation Model", theme=theme, js=js) as demo:
         gr.Markdown("# YuE - Gradio Interface\nEnter your Genre and Lyrics, then generate & listen!")
 
         with gr.Column():
+            
             stage1_model = gr.Textbox(
                 label="Stage1 Model",
                 value=DEFAULT_STAGE1_MODEL,
@@ -265,7 +275,23 @@ def build_gradio_interface():
                 value=TOKENIZER_MODEL,
                 info="he model tokenizer path"
             )
+            
+            gr.Markdown(f"""
+                        **Tips:**
+                        1. `genres` should include details like instruments, genre, mood, vocal timbre, and vocal gender.
+                        2. The length of `lyrics` segments and the `--max_new_tokens` value should be matched. For example, if `--max_new_tokens` is set to 3000, the maximum duration for a segment is around 30 seconds. Ensure your lyrics fit this time frame.
+                        3. If using audio prompt，the duration around 30s will be fine.
+                            
+                        **Notice:**
+                        1. A suitable [Genre] tag consists of five components: genre, instrument, mood, gender, and timbre. All five should be included if possible, separated by spaces. The values of timbre should include "vocal" (e.g., "bright vocal").
 
+                        2. Although our tags have an open vocabulary, we have provided the 200 most commonly used <a href="" id="tags_link" target="_blank">tags</a>. It is recommended to select tags from this list for more stable results.
+
+                        3. The order of the tags is flexible. For example, a stable genre control string might look like: "[Genre] inspiring female uplifting pop airy vocal electronic bright vocal vocal."
+
+                        4. Additionally, we have introduced the "Mandarin" and "Cantonese" tags to distinguish between Mandarin and Cantonese, as their lyrics often share similarities.
+                        """)
+            
             # Textboxes for genre and lyrics
             genre_textarea = gr.Textbox(
                 label="Genre Text",
@@ -286,7 +312,7 @@ def build_gradio_interface():
                 label="Number of Segments",
                 value=2,
                 precision=0,
-                info="The number of segments to process during the generation."
+                info="Set Number of Segments to the number of lyric sections if you want to generate a full song. Additionally, you can increase Stage2 Batch Size based on your available GPU memory."
             )
             stage2_batch_size = gr.Number(
                 label="Stage2 Batch Size",
@@ -524,8 +550,7 @@ def build_gradio_interface():
         stop_button.click(fn=deactivate_timer, outputs=[log_timer])
         return demo
 
-
 if __name__ == "__main__":
     interface = build_gradio_interface()
     # Adjust the port as needed
-    interface.launch(server_name="0.0.0.0", server_port=7860, allowed_paths=["/workspace", ".", os.getcwd()])
+    _, base_url, _ = interface.launch(server_name="0.0.0.0", server_port=7860, allowed_paths=["/workspace", ".", os.getcwd()])
