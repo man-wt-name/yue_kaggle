@@ -2,7 +2,8 @@
 
 Welcome to the **YuE Interface**, a robust and user-friendly Docker-based solution for generating music using YuE models. This interface leverages Gradio for an interactive web UI, enabling you to configure and execute music generation tasks seamlessly. Whether you're running locally with Docker or deploying on RunPod, this guide will help you get started.
 
-> **Note**: This project is a fork of the official [YuE repository](https://github.com/multimodal-art-projection/YuE).
+> **Note**: This project is a fork of the official [YuE repository](https://github.com/multimodal-art-projection/YuE). For more information about inference settings or tips see the official repository README. 
+
 
 
 ### Note
