@@ -82,6 +82,7 @@ def load_model(model_path, quantization):
         model = AutoModelForCausalLM.from_pretrained(
             model_path, 
             torch_dtype=torch.bfloat16,
+            device_map="auto",
             attn_implementation="flash_attention_2", # To enable flashattn, you have to install flash-attn
         )
     elif quantization == "int8":
