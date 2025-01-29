@@ -62,7 +62,9 @@ alissonpereiraanjos/yue-interface:latest
 ## Environment Variables
 
 - **DOWNLOAD_MODELS**: Determines which models to download.
-  - Set to `all` to download all available models.
+  - Set to `all` to download all available models (BF16, INT8).
+  - Set to `all_bf16` to download all available models (BF16).
+  - Set to `all_int8` to download all available models (INT8).
   - Alternatively, specify a comma-separated list of model keys to download specific models (e.g., `DOWNLOAD_MODELS=YuE-s2-1B-general,YuE-s1-7B-anneal-en-cot`).
 
 
