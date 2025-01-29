@@ -16,6 +16,9 @@ If you have any very complex issues regarding the interface open a issue or send
 
 ![preview gradio](/preview.png)
 
+## News and Updates
+
+* **2025.01.29 🔥**: Added support for INT8 quantized models. 
 
 ## Features
 
@@ -258,17 +261,26 @@ Use these options to tailor the setup to your environment and requirements.
 
 Below is the list of available YuE models that you can download by specifying their keys in the `DOWNLOAD_MODELS` environment variable:
 
-| Model Key                   | Docker Image Path                | Container Directory                                   |
-|-----------------------------|----------------------------------|-------------------------------------------------------|
-| `xcodec_mini_infer`         | `m-a-p/xcodec_mini_infer`        | `/workspace/YuE-Interface/inference/xcodec_mini_infer` |
-| `YuE-s1-7B-anneal-en-cot`    | `m-a-p/YuE-s1-7B-anneal-en-cot`   | `/workspace/models/YuE-s1-7B-anneal-en-cot`            |
-| `YuE-s1-7B-anneal-en-icl`    | `m-a-p/YuE-s1-7B-anneal-en-icl`   | `/workspace/models/YuE-s1-7B-anneal-en-icl`            |
-| `YuE-s1-7B-anneal-jp-kr-cot` | `m-a-p/YuE-s1-7B-anneal-jp-kr-cot`| `/workspace/models/YuE-s1-7B-anneal-jp-kr-cot`         |
-| `YuE-s1-7B-anneal-jp-kr-icl` | `m-a-p/YuE-s1-7B-anneal-jp-kr-icl`| `/workspace/models/YuE-s1-7B-anneal-jp-kr-icl`         |
-| `YuE-s1-7B-anneal-zh-cot`    | `m-a-p/YuE-s1-7B-anneal-zh-cot`    | `/workspace/models/YuE-s1-7B-anneal-zh-cot`            |
-| `YuE-s1-7B-anneal-zh-icl`    | `m-a-p/YuE-s1-7B-anneal-zh-icl`    | `/workspace/models/YuE-s1-7B-anneal-zh-icl`            |
-| `YuE-s2-1B-general`          | `m-a-p/YuE-s2-1B-general`          | `/workspace/models/YuE-s2-1B-general`                  |
-| `YuE-upsampler`              | `m-a-p/YuE-upsampler`              | `/workspace/models/YuE-upsampler`                      |
+| Model Key                      | Docker Image Path                     | Container Directory                                    | Quantization |
+|--------------------------------|--------------------------------------|--------------------------------------------------------|--------------|
+| `xcodec_mini_infer`            | `m-a-p/xcodec_mini_infer`           | `/workspace/YuE-Interface/inference/xcodec_mini_infer` | N/A          |
+| `YuE-s1-7B-anneal-en-cot`      | `m-a-p/YuE-s1-7B-anneal-en-cot`     | `/workspace/models/YuE-s1-7B-anneal-en-cot`           | BF16         |
+| `YuE-s1-7B-anneal-en-icl`      | `m-a-p/YuE-s1-7B-anneal-en-icl`     | `/workspace/models/YuE-s1-7B-anneal-en-icl`           | BF16         |
+| `YuE-s1-7B-anneal-jp-kr-cot`   | `m-a-p/YuE-s1-7B-anneal-jp-kr-cot`  | `/workspace/models/YuE-s1-7B-anneal-jp-kr-cot`        | BF16         |
+| `YuE-s1-7B-anneal-jp-kr-icl`   | `m-a-p/YuE-s1-7B-anneal-jp-kr-icl`  | `/workspace/models/YuE-s1-7B-anneal-jp-kr-icl`        | BF16         |
+| `YuE-s1-7B-anneal-zh-cot`      | `m-a-p/YuE-s1-7B-anneal-zh-cot`     | `/workspace/models/YuE-s1-7B-anneal-zh-cot`           | BF16         |
+| `YuE-s1-7B-anneal-zh-icl`      | `m-a-p/YuE-s1-7B-anneal-zh-icl`     | `/workspace/models/YuE-s1-7B-anneal-zh-icl`           | BF16         |
+| `YuE-s2-1B-general`            | `m-a-p/YuE-s2-1B-general`           | `/workspace/models/YuE-s2-1B-general`                 | BF16         |
+| `YuE-upsampler`                | `m-a-p/YuE-upsampler`               | `/workspace/models/YuE-upsampler`                     | BF16         |
+| `YuE-s1-7B-anneal-en-cot-int8` | `Alissonerdx/YuE-s1-7B-anneal-en-cot-int8` | `/workspace/models/YuE-s1-7B-anneal-en-cot-int8` | INT8         |
+| `YuE-s1-7B-anneal-en-icl-int8` | `Alissonerdx/YuE-s1-7B-anneal-en-icl-int8` | `/workspace/models/YuE-s1-7B-anneal-en-icl-int8` | INT8         |
+| `YuE-s1-7B-anneal-jp-kr-cot-int8` | `Alissonerdx/YuE-s1-7B-anneal-jp-kr-cot-int8` | `/workspace/models/YuE-s1-7B-anneal-jp-kr-cot-int8` | INT8         |
+| `YuE-s1-7B-anneal-jp-kr-icl-int8` | `Alissonerdx/YuE-s1-7B-anneal-jp-kr-icl-int8` | `/workspace/models/YuE-s1-7B-anneal-jp-kr-icl-int8` | INT8         |
+| `YuE-s1-7B-anneal-zh-cot-int8` | `Alissonerdx/YuE-s1-7B-anneal-zh-cot-int8` | `/workspace/models/YuE-s1-7B-anneal-zh-cot-int8` | INT8         |
+| `YuE-s1-7B-anneal-zh-icl-int8` | `Alissonerdx/YuE-s1-7B-anneal-zh-icl-int8` | `/workspace/models/YuE-s1-7B-anneal-zh-icl-int8` | INT8         |
+| `YuE-s2-1B-general-int8`       | `Alissonerdx/YuE-s2-1B-general-int8` | `/workspace/models/YuE-s2-1B-general-int8` | INT8         |
+
+
 
 ### Model Suffixes Explained
 

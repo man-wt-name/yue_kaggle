@@ -16,7 +16,7 @@ from tqdm import tqdm
 from einops import rearrange
 from codecmanipulator import CodecManipulator
 from mmtokenizer import _MMSentencePieceTokenizer
-from transformers import AutoTokenizer, AutoModelForCausalLM, LogitsProcessor, LogitsProcessorList
+from transformers import AutoTokenizer, AutoModelForCausalLM, LogitsProcessor, LogitsProcessorList, BitsAndBytesConfig
 import glob
 import time
 import copy
@@ -35,6 +35,8 @@ parser.add_argument("--tokenizer", type=str, default="mm_tokenizer_v0.2_hf/token
 parser.add_argument("--max_new_tokens", type=int, default=3000, help="The maximum number of new tokens to generate in one pass during text generation.")
 parser.add_argument("--run_n_segments", type=int, default=2, help="The number of segments to process during the generation.")
 parser.add_argument("--stage2_batch_size", type=int, default=4, help="The batch size used in Stage 2 inference.")
+parser.add_argument("--quantization_stage1", type=str, default="bf16", choices=["bf16", "int8", "int4"], help="The quantization mode of the model stage 1.")
+parser.add_argument("--quantization_stage2", type=str, default="bf16", choices=["bf16", "int8", "int4"], help="The quantization mode of the model stage 2.")
 # Prompt
 parser.add_argument("--genre_txt", type=str, required=True, help="The file path to a text file containing genre tags that describe the musical style or characteristics (e.g., instrumental, genre, mood, vocal timbre, vocal gender). This is used as part of the generation prompt.")
 parser.add_argument("--lyrics_txt", type=str, required=True, help="The file path to a text file containing the lyrics for the music generation. These lyrics will be processed and split into structured segments to guide the generation process.")
@@ -68,17 +70,47 @@ stage1_output_dir = os.path.join(args.output_dir, f"stage1")
 stage2_output_dir = stage1_output_dir.replace('stage1', 'stage2')
 os.makedirs(stage1_output_dir, exist_ok=True)
 os.makedirs(stage2_output_dir, exist_ok=True)
+quantization_stage1 = args.quantization_stage1
+quantization_stage2 = args.quantization_stage2
 
 # load tokenizer and model
 device = torch.device(f"cuda:{cuda_idx}" if torch.cuda.is_available() else "cpu")
 mmtokenizer = _MMSentencePieceTokenizer(tokenizer_path)
-model = AutoModelForCausalLM.from_pretrained(
-    stage1_model, 
-    torch_dtype=torch.bfloat16,
-    attn_implementation="flash_attention_2", # To enable flashattn, you have to install flash-attn
-    )
-# to device, if gpu is available
-model.to(device)
+
+def load_model(model_path, quantization):
+    if quantization == "bf16":
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path, 
+            torch_dtype=torch.bfloat16,
+            attn_implementation="flash_attention_2", # To enable flashattn, you have to install flash-attn
+        )
+    elif quantization == "int8":
+        bnb_config = BitsAndBytesConfig(
+            load_in_8bit=True  # Enable 8-bit quantization
+        )
+
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path,
+            quantization_config=bnb_config,
+            attn_implementation="flash_attention_2",
+            device_map="auto"  # Automatically assigns to GPU/CPU
+        )
+    elif quantization == "int4":
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True  # Enable 4-bit quantization
+        )
+
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path,
+            quantization_config=bnb_config,
+            attn_implementation="flash_attention_2",
+            device_map="auto"  # Automatically assigns to GPU/CPU
+        )
+    return model
+
+model = load_model(stage1_model, quantization_stage1)
+
+device = model.device
 model.eval()
 
 codectool = CodecManipulator("xcodec", 0, 1)
@@ -230,12 +262,11 @@ if not args.disable_offload_model:
     torch.cuda.empty_cache()
 
 print("Stage 2 inference...")
-model_stage2 = AutoModelForCausalLM.from_pretrained(
-    stage2_model, 
-    torch_dtype=torch.float16,
-    attn_implementation="flash_attention_2"
-    )
-model_stage2.to(device)
+
+
+model_stage2 = load_model(stage2_model, quantization_stage2)
+
+device = model_stage2.device
 model_stage2.eval()
 
 def stage2_generate(model, prompt, batch_size=16):

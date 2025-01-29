@@ -157,7 +157,9 @@ def stop_generation(pid):
 
 def generate_song(
     stage1_model,
+    stage1_model_quantization,
     stage2_model,
+    stage2_model_quantization,
     tokenizer_model,
     genre_txt_path,
     lyrics_txt_path,
@@ -192,7 +194,9 @@ def generate_song(
     cmd = [
         "python", "-u", f"{PROJECT_DIR}/inference/infer.py",  # Adicionado '-u' aqui
         "--stage1_model", f"'{stage1_model}'",
+        "--quantization_stage1", f"{stage1_model_quantization}",
         "--stage2_model", f"'{stage2_model}'",
+        "--quantization_stage2", f"{stage2_model_quantization}",
         "--tokenizer", f"'{tokenizer_model}'",
         "--genre_txt", f"'{genre_txt_path}'",
         "--lyrics_txt", f"'{lyrics_txt_path}'",
@@ -265,10 +269,22 @@ def build_gradio_interface():
                 value=DEFAULT_STAGE1_MODEL,
                 info="The model checkpoint path or identifier for the Stage 1 model."
             )
+            stage1_model_quantization = gr.Dropdown(
+                choices=["bf16", "int8", "int4"],
+                label="Select the quantization of the Stage1 model",
+                value="bf16",
+                interactive=True
+            )
             stage2_model = gr.Textbox(
                 label="Stage2 Model",
                 value=DEFAULT_STAGE2_MODEL,
                 info="The model checkpoint path or identifier for the Stage 2 model."
+            )
+            stage2_model_quantization = gr.Dropdown(
+                choices=["bf16", "int8", "int4"],
+                label="Select the quantization of the Stage2 model",
+                value="bf16",
+                interactive=True
             )
             tokenizer_model = gr.Textbox(
                 label="Tokenizer Model",
@@ -412,7 +428,9 @@ def build_gradio_interface():
 
         def on_generate_click(
             stage1_model,
+            stage1_model_quantization,
             stage2_model,
+            stage2_model_quantization,
             tokenizer_model,
             genre_text,
             lyrics_text,
@@ -451,7 +469,9 @@ def build_gradio_interface():
 
             msg, pid = generate_song(
                 stage1_model,
+                stage1_model_quantization,
                 stage2_model,
+                stage2_model_quantization,
                 tokenizer_model,
                 genre_tmp_path,
                 lyrics_tmp_path,
@@ -475,7 +495,9 @@ def build_gradio_interface():
             fn=on_generate_click,
             inputs=[
                 stage1_model,
+                stage1_model_quantization,
                 stage2_model,
+                stage2_model_quantization,
                 tokenizer_model,
                 genre_textarea,
                 lyrics_textarea,

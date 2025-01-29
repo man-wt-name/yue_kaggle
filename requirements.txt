@@ -14,3 +14,5 @@ gradio
 flash-attn
 sageattention==1.0.6
 toml
+accelerate>=0.26.0
+bitsandbytes
