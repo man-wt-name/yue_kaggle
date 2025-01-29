@@ -180,27 +180,27 @@ def generate_song(
     # Build base command with '-u' for unbuffered output
     cmd = [
         "python", "-u", f"{PROJECT_DIR}/inference/infer.py",  # Adicionado '-u' aqui
-        "--stage1_model", stage1_model,
-        "--stage2_model", stage2_model,
-        "--tokenizer", tokenizer_model,
-        "--genre_txt", genre_txt_path,
-        "--lyrics_txt", lyrics_txt_path,
+        "--stage1_model", f"'{stage1_model}'",
+        "--stage2_model", f"'{stage2_model}'",
+        "--tokenizer", f"'{tokenizer_model}'",
+        "--genre_txt", f"'{genre_txt_path}'",
+        "--lyrics_txt", f"'{lyrics_txt_path}'",
         "--run_n_segments", str(run_n_segments),
         "--stage2_batch_size", str(stage2_batch_size),
-        "--output_dir", output_dir,
+        "--output_dir", f"'{output_dir}'",
         "--cuda_idx", str(cuda_idx),
         "--max_new_tokens", str(max_new_tokens),
-        "--basic_model_config", f"{PROJECT_DIR}/inference/xcodec_mini_infer/final_ckpt/config.yaml",
-        "--resume_path", f"{PROJECT_DIR}/inference/xcodec_mini_infer/final_ckpt/ckpt_00360000.pth",
-        "--config_path", f"{PROJECT_DIR}/inference/xcodec_mini_infer/decoders/config.yaml",
-        "--vocal_decoder_path", f"{PROJECT_DIR}/inference/xcodec_mini_infer/decoders/decoder_131000.pth",
-        "--inst_decoder_path", f"{PROJECT_DIR}/inference/xcodec_mini_infer/decoders/decoder_151000.pth"
+        "--basic_model_config", f"'{PROJECT_DIR}/inference/xcodec_mini_infer/final_ckpt/config.yaml'",
+        "--resume_path", f"'{PROJECT_DIR}/inference/xcodec_mini_infer/final_ckpt/ckpt_00360000.pth'",
+        "--config_path", f"'{PROJECT_DIR}/inference/xcodec_mini_infer/decoders/config.yaml'",
+        "--vocal_decoder_path", f"'{PROJECT_DIR}/inference/xcodec_mini_infer/decoders/decoder_131000.pth'",
+        "--inst_decoder_path", f"'{PROJECT_DIR}/inference/xcodec_mini_infer/decoders/decoder_151000.pth'"
     ]
     
     if use_audio_prompt and saved_audio_path:
         cmd += [
             "--use_audio_prompt",
-            "--audio_prompt_path", saved_audio_path,
+            "--audio_prompt_path", f"'{saved_audio_path}'",
             "--prompt_start_time", str(prompt_start_time),
             "--prompt_end_time", str(prompt_end_time)
         ]
@@ -215,7 +215,7 @@ def generate_song(
         final_cmd_str = prefix_cmd + " ".join(cmd) + suffix_cmd
     else:
         final_cmd_str = " ".join(cmd)
-
+    print(final_cmd_str)
     proc = subprocess.Popen(
         final_cmd_str,
         shell=True,
@@ -467,7 +467,7 @@ def build_gradio_interface():
         def on_stop_click(pid):
             """Triggered when the user clicks 'Stop'."""
             status = stop_generation(pid)
-            return (status, None, gr.update(visible=True), gr.update(visible=False), None, None)
+            return (status, None, gr.update(visible=True), gr.update(visible=False))
 
         stop_button.click(
             fn=on_stop_click,
