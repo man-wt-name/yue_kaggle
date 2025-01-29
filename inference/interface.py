@@ -170,6 +170,8 @@ def generate_song(
         # Check if audio_prompt_file is a valid path
         if isinstance(audio_prompt_file, str):
             audio_filename = os.path.basename(audio_prompt_file)
+            # Replace all especial characters with '_' to avoid issues with the command
+            audio_filename = re.sub(r"[^a-zA-Z0-9.]", "_", audio_filename)
             saved_audio_path = os.path.join(DEFAULT_INPUT_DIR, audio_filename)
             shutil.copy(audio_prompt_file, saved_audio_path)
         else:
