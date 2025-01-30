@@ -18,6 +18,7 @@ If you have any very complex issues regarding the interface open a issue or send
 
 ## News and Updates
 
+* **2025.01.30 🔥**: Added the seed field and also improvements in the genres field.
 * **2025.01.29 🔥**: Added support for INT8 quantized models. 
 
 ## Features
