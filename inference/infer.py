@@ -40,8 +40,8 @@ parser.add_argument("--tokenizer", type=str, default="mm_tokenizer_v0.2_hf/token
 parser.add_argument("--max_new_tokens", type=int, default=3000, help="The maximum number of new tokens to generate in one pass during text generation.")
 parser.add_argument("--run_n_segments", type=int, default=2, help="The number of segments to process during the generation.")
 parser.add_argument("--stage2_batch_size", type=int, default=4, help="The batch size used in Stage 2 inference.")
-parser.add_argument("--quantization_stage1", type=str, default="bf16", choices=["bf16", "int8", "int4"], help="The quantization mode of the model stage 1.")
-parser.add_argument("--quantization_stage2", type=str, default="bf16", choices=["bf16", "int8", "int4"], help="The quantization mode of the model stage 2.")
+parser.add_argument("--quantization_stage1", type=str, default="bf16", choices=["bf16", "int8", "int4", "nf4"], help="The quantization mode of the model stage 1.")
+parser.add_argument("--quantization_stage2", type=str, default="bf16", choices=["bf16", "int8", "int4", "nf4"], help="The quantization mode of the model stage 2.")
 parser.add_argument("--seed", type=int, default=42, help="The random seed to use for reproducibility.")
 # parser.add_argument("--temperature", type=float, default=1.0, help="The temperature value to use during generation.")
 
@@ -100,12 +100,13 @@ def load_optimized_model(model_path, quantization):
     bnb_config = None
     torch_dtype = torch.bfloat16
     
-    if quantization == "int4":
+    if quantization == "int4" or quantization == "nf4":
         bnb_config = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_use_double_quant=True,
-            bnb_4bit_quant_type="nf4"
+            bnb_4bit_quant_type=quantization
         )
+  
     elif quantization == "int8":
         bnb_config = BitsAndBytesConfig(load_in_8bit=True)
 

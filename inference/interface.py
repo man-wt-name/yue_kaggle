@@ -279,7 +279,7 @@ def build_gradio_interface():
                 info="The model checkpoint path or identifier for the Stage 1 model."
             )
             stage1_model_quantization = gr.Dropdown(
-                choices=["bf16", "int8", "int4"],
+                choices=["bf16", "int8", "int4", "nf4"],
                 label="Select the quantization of the Stage1 model",
                 value="bf16",
                 interactive=True
@@ -290,7 +290,7 @@ def build_gradio_interface():
                 info="The model checkpoint path or identifier for the Stage 2 model."
             )
             stage2_model_quantization = gr.Dropdown(
-                choices=["bf16", "int8", "int4"],
+                choices=["bf16", "int8", "int4", "nf4"],
                 label="Select the quantization of the Stage2 model",
                 value="bf16",
                 interactive=True

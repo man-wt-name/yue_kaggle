@@ -2,7 +2,7 @@
 
 # Marker file path
 INIT_MARKER="/var/run/container_initialized"
-DOWNLOAD_MODELS=${DOWNLOAD_MODELS:-"all_bf16"}  # Default if not set, all, all_int8, all_bf16, or comma-separated list of models
+DOWNLOAD_MODELS=${DOWNLOAD_MODELS:-"all_bf16"}  # Default if not set, all, all_int8, all_bf16, all_nf4, or comma-separated list of models
 REPO_DIR=${REPO_DIR:-"/workspace/YuE-Interface"}
 MODEL_DIR=${MODEL_DIR:-"/workspace/models"}
 
@@ -32,7 +32,15 @@ MODELS_INT8["YuE-s1-7B-anneal-zh-icl-int8"]="Alissonerdx/YuE-s1-7B-anneal-zh-icl
 MODELS_INT8["YuE-s2-1B-general-int8"]="Alissonerdx/YuE-s2-1B-general-int8:${MODEL_DIR}/YuE-s2-1B-general-int8"
 MODELS_INT8["YuE-upsampler"]="m-a-p/YuE-upsampler:${MODEL_DIR}/YuE-upsampler"
 
-
+declare -A MODELS_NF4
+MODELS_NF4["YuE-s1-7B-anneal-en-cot-nf4"]="Alissonerdx/YuE-s1-7B-anneal-en-cot-nf4:${MODEL_DIR}/YuE-s1-7B-anneal-en-cot-nf4"
+MODELS_NF4["YuE-s1-7B-anneal-en-icl-nf4"]="Alissonerdx/YuE-s1-7B-anneal-en-icl-nf4:${MODEL_DIR}/YuE-s1-7B-anneal-en-icl-nf4"
+MODELS_NF4["YuE-s1-7B-anneal-jp-kr-cot-nf4"]="Alissonerdx/YuE-s1-7B-anneal-jp-kr-cot-nf4:${MODEL_DIR}/YuE-s1-7B-anneal-jp-kr-cot-nf4"
+MODELS_NF4["YuE-s1-7B-anneal-jp-kr-icl-nf4"]="Alissonerdx/YuE-s1-7B-anneal-jp-kr-icl-nf4:${MODEL_DIR}/YuE-s1-7B-anneal-jp-kr-icl-nf4"
+MODELS_NF4["YuE-s1-7B-anneal-zh-cot-nf4"]="Alissonerdx/YuE-s1-7B-anneal-zh-cot-nf4:${MODEL_DIR}/YuE-s1-7B-anneal-zh-cot-nf4"
+MODELS_NF4["YuE-s1-7B-anneal-zh-icl-nf4"]="Alissonerdx/YuE-s1-7B-anneal-zh-icl-nf4:${MODEL_DIR}/YuE-s1-7B-anneal-zh-icl-nf4"
+MODELS_NF4["YuE-s2-1B-general-nf4"]="Alissonerdx/YuE-s2-1B-general-nf4:${MODEL_DIR}/YuE-s2-1B-general-nf4"
+MODELS_NF4["YuE-upsampler"]="m-a-p/YuE-upsampler:${MODEL_DIR}/YuE-upsampler"
 
 if [ ! -f "$INIT_MARKER" ]; then
     echo "First-time initialization..."
@@ -64,14 +72,23 @@ if [ ! -f "$INIT_MARKER" ]; then
             for key in "${!MODELS_INT8[@]}"; do
                 MODELS[$key]="${MODELS_INT8[$key]}"
             done
+        elif [ "$DOWNLOAD_MODELS" = "all_nf4" ]; then
+            SELECTED_MODELS=("${!MODELS_NF4[@]}")
+            declare -A MODELS
+            for key in "${!MODELS_NF4[@]}"; do
+                MODELS[$key]="${MODELS_NF4[$key]}"
+            done
         elif [ "$DOWNLOAD_MODELS" = "all" ]; then
-            SELECTED_MODELS=("${!MODELS_BF16[@]}" "${!MODELS_INT8[@]}")
+            SELECTED_MODELS=("${!MODELS_BF16[@]}" "${!MODELS_INT8[@]}" "${!MODELS_NF4[@]}")
             declare -A MODELS
             for key in "${!MODELS_BF16[@]}"; do
                 MODELS[$key]="${MODELS_BF16[$key]}"
             done
             for key in "${!MODELS_INT8[@]}"; do
                 MODELS[$key]="${MODELS_INT8[$key]}"
+            done
+            for key in "${!MODELS_NF4[@]}"; do
+                MODELS[$key]="${MODELS_NF4[$key]}"
             done
         else
             IFS=',' read -r -a SELECTED_MODELS <<< "$DOWNLOAD_MODELS"
@@ -81,6 +98,8 @@ if [ ! -f "$INIT_MARKER" ]; then
                     MODELS[$MODEL]="${MODELS_BF16[$MODEL]}"
                 elif [[ -v MODELS_INT8[$MODEL] ]]; then
                     MODELS[$MODEL]="${MODELS_INT8[$MODEL]}"
+                elif [[ -v MODELS_NF4[$MODEL] ]]; then
+                    MODELS[$MODEL]="${MODELS_NF4[$MODEL]}"
                 else
                     echo "Warning: Model $MODEL is not recognized. Skipping."
                 fi
