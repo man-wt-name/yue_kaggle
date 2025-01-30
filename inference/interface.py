@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import threading
@@ -10,6 +11,7 @@ import glob
 import sys
 import re
 import shutil  # Added to copy files
+from collections import OrderedDict
 
 # -------------------------------------------------
 # If you are using Conda, set these paths accordingly
@@ -49,26 +51,30 @@ audio_path_queue = queue.Queue()
 process_dict = {}
 process_lock = threading.Lock()
 
-
-custom_log_box_css = """
-#log_box textarea {
-    overflow-y: scroll;
-    max-height: 400px;  /* Set a max height for the log box */
-    white-space: pre-wrap;  /* Preserve line breaks and white spaces */
-    border: 1px solid #ccc;
-    padding: 10px;
-    font-family: monospace;
-    scrollbar-width: thin!important;
-}
-
-#file_explorer {
-max-height: 374px!important;
-}
-
-#file_explorer .file-wrap {
-max-height: 320px!important;
-}
-"""
+def load_and_process_genres(json_path):
+    """
+    Loads JSON data, processes genres, timbres, genders, moods, and instruments,
+    removes duplicates (case insensitive), and returns a sorted list of unique values.
+    """
+    # Load JSON data
+    with open(json_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    
+    # Combine all relevant categories into a single list
+    categories = ['genre', 'timbre', 'gender', 'mood', 'instrument']
+    all_items = [item.strip() for category in categories for item in data.get(category, [])]
+    
+    # Use a set for deduplication (case insensitive)
+    unique_items = OrderedDict()
+    for item in all_items:
+        key = item.lower()
+        if key not in unique_items and item:  # Skip empty strings
+            unique_items[key] = item
+    
+    # Sort alphabetically while preserving original capitalization
+    sorted_items = sorted(unique_items.values(), key=lambda x: x.lower())
+    
+    return sorted_items
 
 js = """
 function createLink() {
@@ -155,6 +161,7 @@ def stop_generation(pid):
         return f"Error stopping process: {str(e)}"
 
 
+
 def generate_song(
     stage1_model,
     stage1_model_quantization,
@@ -168,6 +175,7 @@ def generate_song(
     output_dir,
     cuda_idx,
     max_new_tokens,
+    seed,
     use_audio_prompt,
     audio_prompt_file,
     prompt_start_time,
@@ -204,6 +212,7 @@ def generate_song(
         "--stage2_batch_size", str(stage2_batch_size),
         "--output_dir", f"'{output_dir}'",
         "--cuda_idx", str(cuda_idx),
+        "--seed", f"{seed}",
         "--max_new_tokens", str(max_new_tokens),
         "--basic_model_config", f"'{PROJECT_DIR}/inference/xcodec_mini_infer/final_ckpt/config.yaml'",
         "--resume_path", f"'{PROJECT_DIR}/inference/xcodec_mini_infer/final_ckpt/ckpt_00360000.pth'",
@@ -309,13 +318,27 @@ def build_gradio_interface():
                         """)
             
             # Textboxes for genre and lyrics
-            genre_textarea = gr.Textbox(
-                label="Genre Text",
-                lines=4,
-                placeholder="Example: [Genre] inspiring female uplifting pop airy vocal...",
+            genres = load_and_process_genres(f"{PROJECT_DIR}/top_200_tags.json")
+            genre_select = gr.Dropdown(
+                label="Select Music Genres",
                 info="Text containing genre tags that describe the musical style or characteristics (e.g., instrumental, genre, mood, vocal timbre, vocal gender). This is used as part of the generation prompt.",
-                value=genre_example
+                choices=genres,
+                multiselect=True,
+                interactive=True,
+                max_choices=50,
+                container=True
             )
+            
+            genre_textarea = gr.Textbox(
+                visible=False,
+            )
+            
+            genre_select.change(
+                fn=lambda x: " ".join(x),
+                inputs=genre_select,
+                outputs=genre_textarea
+            )
+            
             lyrics_textarea = gr.Textbox(
                 label="Lyrics Text",
                 lines=4,
@@ -376,6 +399,13 @@ def build_gradio_interface():
                 visible=False,
                 info="The end time in seconds to extract the audio prompt from the given audio file."
             )
+            
+            seed = gr.Number(
+                label="Seed",
+                value=42,
+                precision=0,
+                info="Seed for random number generation."
+            )
 
             def toggle_audio_prompt(checked):
                 return [
@@ -401,7 +431,7 @@ def build_gradio_interface():
                 interactive=False
             )
             
-            explorer = gr.FileExplorer(root_dir=DEFAULT_OUTPUT_DIR, interactive=True, label="File Explorer", file_count="single", elem_id="file_explorer")     
+            explorer = gr.FileExplorer(root_dir=DEFAULT_OUTPUT_DIR, interactive=True, label="File Explorer", file_count="single", elem_id="file_explorer", every=1)     
             with gr.Column():   
                 gr.Markdown("### Select a single file from the file explorer for download.")
             
@@ -439,6 +469,7 @@ def build_gradio_interface():
             output_dir,
             cuda_idx,
             max_new_tokens,
+            seed,
             use_audio_prompt,
             audio_prompt_file,
             prompt_start_time,
@@ -453,8 +484,6 @@ def build_gradio_interface():
                         None,
                         gr.update(visible=True),
                         gr.update(visible=False),
-                        None,
-                        None
                     )
 
             # Writes genre_text and lyrics_text to temporary .txt files
@@ -480,6 +509,7 @@ def build_gradio_interface():
                 output_dir,
                 cuda_idx,
                 max_new_tokens,
+                seed,
                 use_audio_prompt,
                 audio_prompt_file,
                 prompt_start_time,
@@ -506,6 +536,7 @@ def build_gradio_interface():
                 output_dir,
                 cuda_idx,
                 max_new_tokens,
+                seed,
                 use_audio_prompt,
                 audio_prompt_file,
                 prompt_start_time,

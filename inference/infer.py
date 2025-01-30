@@ -10,6 +10,7 @@ from omegaconf import OmegaConf
 import torchaudio
 from torchaudio.transforms import Resample
 import soundfile as sf
+import random
 
 import uuid
 from tqdm import tqdm
@@ -27,6 +28,10 @@ from post_process_audio import replace_low_freq_with_energy_matched
 import re
 
 
+torch.backends.cuda.enable_flash_sdp(True)
+torch.backends.cuda.enable_math_sdp(True)
+torch.set_float32_matmul_precision('high')
+
 parser = argparse.ArgumentParser()
 # Model Configuration:
 parser.add_argument("--stage1_model", type=str, default="m-a-p/YuE-s1-7B-anneal-en-cot", help="The model checkpoint path or identifier for the Stage 1 model.")
@@ -37,6 +42,9 @@ parser.add_argument("--run_n_segments", type=int, default=2, help="The number of
 parser.add_argument("--stage2_batch_size", type=int, default=4, help="The batch size used in Stage 2 inference.")
 parser.add_argument("--quantization_stage1", type=str, default="bf16", choices=["bf16", "int8", "int4"], help="The quantization mode of the model stage 1.")
 parser.add_argument("--quantization_stage2", type=str, default="bf16", choices=["bf16", "int8", "int4"], help="The quantization mode of the model stage 2.")
+parser.add_argument("--seed", type=int, default=42, help="The random seed to use for reproducibility.")
+# parser.add_argument("--temperature", type=float, default=1.0, help="The temperature value to use during generation.")
+
 # Prompt
 parser.add_argument("--genre_txt", type=str, required=True, help="The file path to a text file containing genre tags that describe the musical style or characteristics (e.g., instrumental, genre, mood, vocal timbre, vocal gender). This is used as part of the generation prompt.")
 parser.add_argument("--lyrics_txt", type=str, required=True, help="The file path to a text file containing the lyrics for the music generation. These lyrics will be processed and split into structured segments to guide the generation process.")
@@ -72,46 +80,49 @@ os.makedirs(stage1_output_dir, exist_ok=True)
 os.makedirs(stage2_output_dir, exist_ok=True)
 quantization_stage1 = args.quantization_stage1
 quantization_stage2 = args.quantization_stage2
+seed = args.seed
 
 # load tokenizer and model
 device = torch.device(f"cuda:{cuda_idx}" if torch.cuda.is_available() else "cpu")
 mmtokenizer = _MMSentencePieceTokenizer(tokenizer_path)
 
-def load_model(model_path, quantization):
-    if quantization == "bf16":
-        model = AutoModelForCausalLM.from_pretrained(
-            model_path, 
-            torch_dtype=torch.bfloat16,
-            device_map="auto",
-            attn_implementation="flash_attention_2", # To enable flashattn, you have to install flash-attn
+
+def set_seed(seed=42):
+    torch.manual_seed(seed)  # Sets seed for PyTorch operations
+    torch.cuda.manual_seed_all(seed)  # Sets seed for all CUDA GPUs (if available)
+    np.random.seed(seed)  # Sets seed for NumPy
+    random.seed(seed)  # Sets seed for Python's built-in random module
+    torch.backends.cudnn.deterministic = True  # Ensures deterministic results
+    torch.backends.cudnn.benchmark = False  # Disables benchmarking for consistency
+
+
+def load_optimized_model(model_path, quantization):
+    bnb_config = None
+    torch_dtype = torch.bfloat16
+    
+    if quantization == "int4":
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_quant_type="nf4"
         )
     elif quantization == "int8":
-        bnb_config = BitsAndBytesConfig(
-            load_in_8bit=True  # Enable 8-bit quantization
-        )
+        bnb_config = BitsAndBytesConfig(load_in_8bit=True)
 
-        model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            quantization_config=bnb_config,
-            attn_implementation="flash_attention_2",
-            device_map="auto"  # Automatically assigns to GPU/CPU
-        )
-    elif quantization == "int4":
-        bnb_config = BitsAndBytesConfig(
-            load_in_4bit=True  # Enable 4-bit quantization
-        )
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path,
+        quantization_config=bnb_config,
+        torch_dtype=torch_dtype,
+        device_map="auto",
+        attn_implementation="flash_attention_2"
+    )
+    
+    return torch.compile(model, mode="max-autotune")
 
-        model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            quantization_config=bnb_config,
-            attn_implementation="flash_attention_2",
-            device_map="auto"  # Automatically assigns to GPU/CPU
-        )
-    return model
+set_seed(seed)
+model = load_optimized_model(stage1_model, quantization_stage1)
+model = model.to(f'cuda:{cuda_idx}')
 
-model = load_model(stage1_model, quantization_stage1)
-
-device = model.device
 model.eval()
 
 codectool = CodecManipulator("xcodec", 0, 1)
@@ -265,9 +276,9 @@ if not args.disable_offload_model:
 print("Stage 2 inference...")
 
 
-model_stage2 = load_model(stage2_model, quantization_stage2)
+model_stage2 = load_optimized_model(stage2_model, quantization_stage2)
+model_stage2 = model_stage2.to(f'cuda:{cuda_idx}')
 
-device = model_stage2.device
 model_stage2.eval()
 
 def stage2_generate(model, prompt, batch_size=16):
