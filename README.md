@@ -18,6 +18,8 @@ If you have any very complex issues regarding the interface open a issue or send
 
 ## News and Updates
 
+* **2025.01.30 🔥 Announcement: A New Era Under Apache 2.0 🔥**: We are thrilled to announce that, in response to overwhelming requests from our community, **YuE** is now officially licensed under the **Apache 2.0** license. We sincerely hope this marks a watershed moment—akin to what Stable Diffusion and LLaMA have achieved in their respective fields—for music generation and creative AI. 🎉🎉🎉
+
 * **2025.01.30 🔥**: Added support for NF4 quantized models. 
 * **2025.01.30 🔥**: Added the seed field and also improvements in the genres field.
 * **2025.01.29 🔥**: Added support for INT8 quantized models. 
