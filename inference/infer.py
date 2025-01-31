@@ -28,6 +28,9 @@ from post_process_audio import replace_low_freq_with_energy_matched
 import re
 
 
+import warnings
+warnings.filterwarnings("ignore")
+
 torch.backends.cuda.enable_flash_sdp(True)
 torch.backends.cuda.enable_math_sdp(True)
 torch.set_float32_matmul_precision('high')

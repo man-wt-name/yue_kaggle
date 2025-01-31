@@ -34,15 +34,58 @@ os.makedirs(DEFAULT_OUTPUT_DIR, exist_ok=True)
 DEFAULT_INPUT_DIR = "/workspace/inputs"
 os.makedirs(DEFAULT_INPUT_DIR, exist_ok=True)
 
-lyrics_example_file = open(f"{PROJECT_DIR}/inference/prompt_examples/lyrics.txt",mode='r')
-lyrics_example = lyrics_example_file.read()
-lyrics_example_file.close()
+with open(f"{PROJECT_DIR}/inference/prompt_examples/lyrics.txt", mode='r') as lyrics_example_file:
+    lyrics_example = lyrics_example_file.read()
 
-genre_example_file = open(f"{PROJECT_DIR}/inference/prompt_examples/genre.txt",mode='r')
-genre_example = genre_example_file.read()
-genre_example_file.close()
+with open(f"{PROJECT_DIR}/inference/prompt_examples/genre.txt", mode='r') as genre_example_file:
+    genre_example = genre_example_file.read()
 
 # -------------------------------------------------
+
+# Functions to List and Categorize Models
+def get_models(model_dir):
+    """
+    Lists all models in the specified directory and categorizes them as Stage1, Stage2, or both.
+    """
+    if not os.path.isdir(model_dir):
+        return [], [], []
+    
+    # List directories only
+    models = [name for name in os.listdir(model_dir) if os.path.isdir(os.path.join(model_dir, name))]
+    stage1_models = []
+    stage2_models = []
+    both_stage_models = []
+
+    for model in models:
+        lower_name = model.lower()
+        model_path = os.path.join(model_dir, model)
+        if 's1' in lower_name:
+            stage1_models.append(model_path)
+        if 's2' in lower_name:
+            stage2_models.append(model_path)
+        if 's1' not in lower_name and 's2' not in lower_name:
+            both_stage_models.append(model_path)
+    return stage1_models, stage2_models, both_stage_models
+
+def get_quantization_type(model_path):
+    """
+    Determines the quantization type based on the model's name.
+    """
+    basename = os.path.basename(model_path).lower()
+    if '-int4' in basename:
+        return 'int4'
+    elif '-nf4' in basename:
+        return 'nf4'
+    elif '-int8' in basename:
+        return 'int8'
+    else:
+        return 'bf16'
+
+# Model Directory
+MODEL_DIR = "/workspace/models/"
+stage1_models, stage2_models, both_stage_models = get_models(MODEL_DIR)
+stage1_choices = stage1_models + both_stage_models
+stage2_choices = stage2_models + both_stage_models
 
 # Queues for logs and audio paths
 log_queue = queue.Queue()
@@ -78,10 +121,10 @@ def load_and_process_genres(json_path):
 
 js = """
 function createLink() {
-let baseUrl = window.location.origin;
-baseUrl = baseUrl.replace("7860", "8080");
-const tagLink = `${baseUrl}/repo/wav_top_200_tags.json`;
-document.getElementById("tags_link").href = tagLink;
+    let baseUrl = window.location.origin;
+    baseUrl = baseUrl.replace("7860", "8080");
+    const tagLink = `${baseUrl}/repo/wav_top_200_tags.json`;
+    document.getElementById("tags_link").href = tagLink;
 }
 """
 
@@ -119,10 +162,10 @@ def read_subprocess_output(proc, log_queue, audio_path_queue):
         print(f"Subprocess output: {decoded_line}")  # Debugging
         log_queue.put(decoded_line)
         
-        # Detect the line containing "Created mix:"
+        # Detect the line containing "Successfully created '"
         if "Created mix:" in decoded_line:
             # Extract the audio path using regex
-            match = re.search(r"Created mix:\s*(\S+)", decoded_line)
+            match = re.search(r"Created mix:\s*([^']+\.mp3)", decoded_line)
             if match:
                 audio_path = match.group(1)
                 print(f"Audio path found: {audio_path}")  # Debugging
@@ -132,7 +175,6 @@ def read_subprocess_output(proc, log_queue, audio_path_queue):
     with process_lock:
         if proc.pid in process_dict:
             del process_dict[proc.pid]
-
 
 def stop_generation(pid):
     """Send signals to stop the subprocess if running."""
@@ -159,8 +201,6 @@ def stop_generation(pid):
         return "Inference stopped successfully."
     except Exception as e:
         return f"Error stopping process: {str(e)}"
-
-
 
 def generate_song(
     stage1_model,
@@ -189,7 +229,7 @@ def generate_song(
         # Check if audio_prompt_file is a valid path
         if isinstance(audio_prompt_file, str):
             audio_filename = os.path.basename(audio_prompt_file)
-            # Replace all especial characters with '_' to avoid issues with the command
+            # Replace all special characters with '_' to avoid issues with the command
             audio_filename = re.sub(r"[^a-zA-Z0-9.]", "_", audio_filename)
             saved_audio_path = os.path.join(DEFAULT_INPUT_DIR, audio_filename)
             shutil.copy(audio_prompt_file, saved_audio_path)
@@ -200,7 +240,7 @@ def generate_song(
 
     # Build base command with '-u' for unbuffered output
     cmd = [
-        "python", "-u", f"{PROJECT_DIR}/inference/infer.py",  # Adicionado '-u' aqui
+        "python", "-u", f"{PROJECT_DIR}/inference/infer.py",  # Added '-u' here
         "--stage1_model", f"'{stage1_model}'",
         "--quantization_stage1", f"{stage1_model_quantization}",
         "--stage2_model", f"'{stage2_model}'",
@@ -257,7 +297,6 @@ def generate_song(
 
     return f"Inference started. Outputs will be saved in {output_dir}...", proc.pid
 
-
 def update_logs(current_logs):
     """Pull all new lines from log_queue and append to current_logs."""
     new_text = ""
@@ -265,40 +304,44 @@ def update_logs(current_logs):
         new_text += log_queue.get()
     return current_logs + new_text
 
-
 def build_gradio_interface():
     theme = gr.themes.Base()
-    with gr.Blocks(title="YuE: Open Full-song Generation Foundation Model", theme=theme, js=js) as demo:
+    with gr.Blocks(title="YuE: Open Full-song Generation Foundation Model", theme=theme) as demo:
         gr.Markdown("# YuE - Gradio Interface\nEnter your Genre and Lyrics, then generate & listen!")
 
         with gr.Column():
             
-            stage1_model = gr.Textbox(
+            # Replace Textboxes with Dropdowns for Automatic Model Selection
+            stage1_model = gr.Dropdown(
                 label="Stage1 Model",
+                choices=stage1_choices,
                 value=DEFAULT_STAGE1_MODEL,
-                info="The model checkpoint path or identifier for the Stage 1 model."
+                info="Select the checkpoint path for the Stage 1 model.",
+                interactive=True
             )
             stage1_model_quantization = gr.Dropdown(
                 choices=["bf16", "int8", "int4", "nf4"],
                 label="Select the quantization of the Stage1 model",
-                value="bf16",
+                value=get_quantization_type(DEFAULT_STAGE1_MODEL),
                 interactive=True
             )
-            stage2_model = gr.Textbox(
+            stage2_model = gr.Dropdown(
                 label="Stage2 Model",
+                choices=stage2_choices,
                 value=DEFAULT_STAGE2_MODEL,
-                info="The model checkpoint path or identifier for the Stage 2 model."
+                info="Select the checkpoint path for the Stage 2 model.",
+                interactive=True
             )
             stage2_model_quantization = gr.Dropdown(
                 choices=["bf16", "int8", "int4", "nf4"],
                 label="Select the quantization of the Stage2 model",
-                value="bf16",
+                value=get_quantization_type(DEFAULT_STAGE2_MODEL),
                 interactive=True
             )
             tokenizer_model = gr.Textbox(
                 label="Tokenizer Model",
                 value=TOKENIZER_MODEL,
-                info="he model tokenizer path"
+                info="Path to the model tokenizer."
             )
             
             gr.Markdown(f"""
@@ -310,23 +353,20 @@ def build_gradio_interface():
                         **Notice:**
                         1. A suitable [Genre] tag consists of five components: genre, instrument, mood, gender, and timbre. All five should be included if possible, separated by spaces. The values of timbre should include "vocal" (e.g., "bright vocal").
 
-                        2. Although our tags have an open vocabulary, we have provided the 200 most commonly used <a href="" id="tags_link" target="_blank">tags</a>. It is recommended to select tags from this list for more stable results.
+                        2. The order of the tags is flexible. For example, a stable genre control string might look like: "[Genre] inspiring female uplifting pop airy vocal electronic bright vocal vocal."
 
-                        3. The order of the tags is flexible. For example, a stable genre control string might look like: "[Genre] inspiring female uplifting pop airy vocal electronic bright vocal vocal."
-
-                        4. Additionally, we have introduced the "Mandarin" and "Cantonese" tags to distinguish between Mandarin and Cantonese, as their lyrics often share similarities.
+                        3. Additionally, we have introduced the "Mandarin" and "Cantonese" tags to distinguish between Mandarin and Cantonese, as their lyrics often share similarities.
                         """)
-            
-            # Textboxes for genre and lyrics
+                   
+            # Dropdowns for genre and lyrics
             genres = load_and_process_genres(f"{PROJECT_DIR}/top_200_tags.json")
             genre_select = gr.Dropdown(
                 label="Select Music Genres",
-                info="Text containing genre tags that describe the musical style or characteristics (e.g., instrumental, genre, mood, vocal timbre, vocal gender). This is used as part of the generation prompt.",
+                info="Select genre tags that describe the musical style or characteristics (e.g., instrumental, genre, mood, vocal timbre, vocal gender). This is used as part of the generation prompt.",
                 choices=genres,
-                multiselect=True,
                 interactive=True,
-                max_choices=50,
-                container=True
+                multiselect=True,
+                max_choices=50
             )
             
             genre_textarea = gr.Textbox(
@@ -385,7 +425,7 @@ def build_gradio_interface():
                 label="Upload Audio Prompt",
                 file_types=["audio"],
                 visible=False,
-                file_count="single",  # Ensure that only one file is uploaded,
+                file_count="single",  # Ensure that only one file is uploaded
             )
             prompt_start_time = gr.Number(
                 label="Prompt Start Time (s)",
@@ -431,7 +471,17 @@ def build_gradio_interface():
                 interactive=False
             )
             
-            explorer = gr.FileExplorer(root_dir=DEFAULT_OUTPUT_DIR, interactive=True, label="File Explorer", file_count="single", elem_id="file_explorer", every=1)     
+            # workaround for the issue of the file explorer not updating
+            def update_file_explorer():
+                return gr.FileExplorer(root_dir=PROJECT_DIR)
+            def update_file_explorer_2():
+                return gr.FileExplorer(root_dir=DEFAULT_OUTPUT_DIR)
+            
+            explorer = gr.FileExplorer(root_dir=DEFAULT_OUTPUT_DIR, interactive=True, label="File Explorer", file_count="single", elem_id="file_explorer", glob="**/*.mp3", every=1)     
+            update_button = gr.Button("Refresh File Explorer")
+            
+            update_button.click(update_file_explorer, outputs=explorer).then(update_file_explorer_2, outputs=explorer)
+            
             with gr.Column():   
                 gr.Markdown("### Select a single file from the file explorer for download.")
             
@@ -455,6 +505,19 @@ def build_gradio_interface():
         # Hidden states
         generation_pid = gr.State(None)
         current_audio_path = gr.State(None)
+
+        # Adding Callbacks to Update Quantization Based on Selected Model
+        stage1_model.change(
+            fn=lambda model_path: get_quantization_type(model_path),
+            inputs=stage1_model,
+            outputs=stage1_model_quantization
+        )
+
+        stage2_model.change(
+            fn=lambda model_path: get_quantization_type(model_path),
+            inputs=stage2_model,
+            outputs=stage2_model_quantization
+        )
 
         def on_generate_click(
             stage1_model,
@@ -558,13 +621,19 @@ def build_gradio_interface():
 
         last_log_update = gr.State("")
         last_audio_update = gr.State(None)
-
+        
+        
+        # audio_result_path = gr.Textbox(
+        #     visible=False,
+        #     interactive=False
+        # )
+        
         def refresh_state(log_text, pid, old_audio, last_log, last_audio):
             # Collect all new logs
             new_logs = ""
             while not log_queue.empty():
                 new_logs += log_queue.get()
-            
+                
             # Collect new audio if available
             new_audio = old_audio
             while not audio_path_queue.empty():
@@ -574,6 +643,12 @@ def build_gradio_interface():
             updated_log = log_text + new_logs if new_logs else log_text
             has_log_changes = updated_log != last_log
             has_audio_changes = new_audio != last_audio and new_audio is not None
+            
+            if has_audio_changes:
+                final_path = os.path.join(DEFAULT_OUTPUT_DIR, os.path.basename(new_audio))
+                audio_player.value = final_path
+                audio_status.value = "File ready for download."
+                #explorer.refresh()
 
             # Return gr.update() for fields that have changed, else no update
             return (
