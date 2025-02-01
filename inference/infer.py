@@ -42,7 +42,6 @@ parser.add_argument("--run_n_segments", type=int, default=2, help="The number of
 parser.add_argument("--stage2_batch_size", type=int, default=4, help="The batch size used in Stage 2 inference.")
 parser.add_argument("--quantization_stage1", type=str, default="bf16", choices=["bf16", "int8", "int4", "nf4"], help="The quantization mode of the model stage 1.")
 parser.add_argument("--quantization_stage2", type=str, default="bf16", choices=["bf16", "int8", "int4", "nf4"], help="The quantization mode of the model stage 2.")
-parser.add_argument("--seed", type=int, default=42, help="The random seed to use for reproducibility.")
 # parser.add_argument("--temperature", type=float, default=1.0, help="The temperature value to use during generation.")
 
 # Prompt

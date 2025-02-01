@@ -219,7 +219,14 @@ def generate_song(
     use_audio_prompt,
     audio_prompt_file,
     prompt_start_time,
-    prompt_end_time
+    prompt_end_time,
+    use_dual_tracks_prompt,
+    vocal_track_prompt_file,
+    instrumental_track_prompt_file,
+    prompt_start_time_2,
+    prompt_end_time_2,
+    disable_offload_model,
+    keep_intermediate
 ):
     """Spawns infer.py to generate music, capturing logs in real time."""
     os.makedirs(output_dir, exist_ok=True)
@@ -237,6 +244,28 @@ def generate_song(
             return "Invalid audio prompt file format.", None
     else:
         saved_audio_path = ""
+        
+        
+    if use_dual_tracks_prompt and vocal_track_prompt_file is not None and instrumental_track_prompt_file is not None:
+        if isinstance(vocal_track_prompt_file, str):
+            vocal_track_filename = os.path.basename(vocal_track_prompt_file)
+            vocal_track_filename = re.sub(r"[^a-zA-Z0-9.]", "_", vocal_track_filename)
+            saved_vocal_track_path = os.path.join(DEFAULT_INPUT_DIR, vocal_track_filename)
+            shutil.copy(vocal_track_prompt_file, saved_vocal_track_path)
+        else:
+            return "Invalid vocal track prompt file format.", None
+        
+        if isinstance(instrumental_track_prompt_file, str):
+            instrumental_track_filename = os.path.basename(instrumental_track_prompt_file)
+            # Replace all special characters with '_' to avoid issues with the command
+            instrumental_track_filename = re.sub(r"[^a-zA-Z0-9.]", "_", instrumental_track_filename)
+            saved_instrumental_track_path = os.path.join(DEFAULT_INPUT_DIR, instrumental_track_filename)
+            shutil.copy(instrumental_track_prompt_file, saved_instrumental_track_path)
+        else:
+            return "Invalid instrumental track file format.", None
+    else:
+        saved_vocal_track_path = ""
+        saved_instrumental_track_path = ""
 
     # Build base command with '-u' for unbuffered output
     cmd = [
@@ -268,7 +297,21 @@ def generate_song(
             "--prompt_start_time", str(prompt_start_time),
             "--prompt_end_time", str(prompt_end_time)
         ]
+        
+    if use_dual_tracks_prompt and saved_vocal_track_path and saved_instrumental_track_path:
+        cmd += [
+            "--use_dual_tracks_prompt",
+            "--vocal_track_prompt_path", f"'{saved_vocal_track_path}'",
+            "--instrumental_track_prompt_path", f"'{saved_instrumental_track_path}'",
+            "--prompt_start_time", str(prompt_start_time_2),
+            "--prompt_end_time", str(prompt_end_time_2)
+        ]
 
+    if disable_offload_model:
+        cmd.append("--disable_offload_model")
+    if keep_intermediate:
+        cmd.append("--keep_intermediate")
+        
     # If using conda, wrap the command
     if os.path.isfile(CONDA_ACTIVATE_PATH):
         prefix_cmd = (
@@ -415,6 +458,31 @@ def build_gradio_interface():
                 precision=0,
                 info="The maximum number of new tokens to generate in one pass during text generation."
             )
+            
+            disable_offload_model = gr.Checkbox(
+                label="Disable Offload Model?",
+                value=False,
+                info="If set, the model will not be offloaded from the GPU to CPU after Stage 1 inference."
+            )
+            
+            keep_intermediate = gr.Checkbox(
+                label="Keep Intermediate Files?",
+                value=False,
+                info="If set, intermediate outputs will be saved during processing."
+            )
+            
+            
+              
+            gr.Markdown(f"""
+If you want to use music in-context-learning (provide a reference song), enable `Use Audio Prompt?` and provide `Audio File`, `Prompt Start Time (s)`, and `Prompt Start Time (s)` to specify the audio segment. 
+
+Note: 
+- ICL requires a different ckpt, e.g. `m-a-p/YuE-s1-7B-anneal-en-icl`.
+
+- Music ICL generally requires a 30s audio segment. The model will write new songs with similar style of the provided audio, and may improve musicality.
+
+- We have 4 modes for ICL: mix, vocal, instrumental, and dual-track. 
+                        """)
 
             use_audio_prompt = gr.Checkbox(
                 label="Use Audio Prompt?",
@@ -427,6 +495,7 @@ def build_gradio_interface():
                 visible=False,
                 file_count="single",  # Ensure that only one file is uploaded
             )
+            
             prompt_start_time = gr.Number(
                 label="Prompt Start Time (s)",
                 value=0,
@@ -440,13 +509,6 @@ def build_gradio_interface():
                 info="The end time in seconds to extract the audio prompt from the given audio file."
             )
             
-            seed = gr.Number(
-                label="Seed",
-                value=42,
-                precision=0,
-                info="Seed for random number generation."
-            )
-
             def toggle_audio_prompt(checked):
                 return [
                     gr.update(visible=checked),
@@ -459,6 +521,89 @@ def build_gradio_interface():
                 inputs=use_audio_prompt,
                 outputs=[audio_prompt_file, prompt_start_time, prompt_end_time]
             )
+            
+            use_dual_tracks_prompt = gr.Checkbox(
+                label="Use Dual Tracks Prompt?",
+                value=False,
+                info="If set, the model will use an dual tracks files as a prompt during generation."
+            )
+            vocal_track_prompt_file = gr.File(
+                label="Upload Vocal Track File",
+                file_types=["audio"],
+                visible=False,
+                file_count="single",  # Ensure that only one file is uploaded
+            )
+            
+            instrumental_track_prompt_file = gr.File(
+                label="Upload Instrumental Track File",
+                file_types=["audio"],
+                visible=False,
+                file_count="single",  # Ensure that only one file is uploaded
+            )
+            
+            prompt_start_time_2 = gr.Number(
+                label="Prompt Start Time (s)",
+                value=0,
+                visible=False,
+                info="The start time in seconds to extract the audio prompt from the given audio file."
+            )
+            prompt_end_time_2 = gr.Number(
+                label="Prompt End Time (s)",
+                value=30,
+                visible=False,
+                info="The end time in seconds to extract the audio prompt from the given audio file."
+            )
+            
+            def toggle_dual_track_prompt(checked):
+                return [
+                    gr.update(visible=checked),
+                    gr.update(visible=checked),
+                    gr.update(visible=checked),
+                    gr.update(visible=checked),
+                ]
+
+            use_dual_tracks_prompt.change(
+                fn=toggle_dual_track_prompt,
+                inputs=use_dual_tracks_prompt,
+                outputs=[vocal_track_prompt_file, instrumental_track_prompt_file, prompt_start_time_2, prompt_end_time_2]
+            )
+            
+            def handle_checkbox_change(use_audio_prompt_checked, use_dual_tracks_prompt_checked):
+                if use_audio_prompt_checked:
+                    return True, False, *toggle_audio_prompt(True), *toggle_dual_track_prompt(False)
+                elif use_dual_tracks_prompt_checked:
+                    return False, True, *toggle_audio_prompt(False), *toggle_dual_track_prompt(True)
+                else:
+                    return False, False, *toggle_audio_prompt(False), *toggle_dual_track_prompt(False)
+                
+            use_audio_prompt.change(
+                fn=handle_checkbox_change,
+                inputs=[use_audio_prompt, use_dual_tracks_prompt],
+                outputs=[
+                    use_audio_prompt, use_dual_tracks_prompt,
+                    audio_prompt_file, prompt_start_time, prompt_end_time,
+                    vocal_track_prompt_file, instrumental_track_prompt_file, prompt_start_time_2, prompt_end_time_2
+                ]
+            )
+    
+            use_dual_tracks_prompt.change(
+                fn=handle_checkbox_change,
+                inputs=[use_audio_prompt, use_dual_tracks_prompt],
+                outputs=[
+                    use_audio_prompt, use_dual_tracks_prompt,
+                    audio_prompt_file, prompt_start_time, prompt_end_time,
+                    vocal_track_prompt_file, instrumental_track_prompt_file, prompt_start_time_2, prompt_end_time_2
+                ]
+            )
+            
+            seed = gr.Number(
+                label="Seed",
+                value=42,
+                precision=0,
+                info="Seed for random number generation."
+            )
+
+           
 
             generate_button = gr.Button("Generate Music")
             stop_button = gr.Button("Stop", visible=False)
@@ -536,7 +681,14 @@ def build_gradio_interface():
             use_audio_prompt,
             audio_prompt_file,
             prompt_start_time,
-            prompt_end_time
+            prompt_end_time,
+            use_dual_tracks_prompt,
+            vocal_track_prompt_file,
+            instrumental_track_prompt_file,
+            prompt_start_time_2,
+            prompt_end_time_2,
+            disable_offload_model,
+            keep_intermediate
         ):
             """Triggered when user clicks 'Generate Music'."""
             # Check if a process is already running
@@ -576,7 +728,14 @@ def build_gradio_interface():
                 use_audio_prompt,
                 audio_prompt_file,
                 prompt_start_time,
-                prompt_end_time
+                prompt_end_time,
+                use_dual_tracks_prompt,
+                vocal_track_prompt_file,
+                instrumental_track_prompt_file,
+                prompt_start_time_2,
+                prompt_end_time_2,
+                disable_offload_model,
+                keep_intermediate
             )
             # If the generation started successfully, hide "Generate" and show "Stop"
             if pid:
@@ -603,7 +762,14 @@ def build_gradio_interface():
                 use_audio_prompt,
                 audio_prompt_file,
                 prompt_start_time,
-                prompt_end_time
+                prompt_end_time,
+                use_dual_tracks_prompt,
+                vocal_track_prompt_file,
+                instrumental_track_prompt_file,
+                prompt_start_time_2,
+                prompt_end_time_2,
+                disable_offload_model,
+                keep_intermediate
             ],
             outputs=[log_box, generation_pid, generate_button, stop_button]
         )
