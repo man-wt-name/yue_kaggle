@@ -18,6 +18,8 @@ If you have any very complex issues regarding the interface open a issue or send
 
 ## News and Updates
 
+* **2025.01.30 🧑🏻‍💻 Inference Update**: 1. Support dual-track ICL mode. 2. Fix "instrumental" naming bug in output files. 3. Support seeding. 
+
 > **Note**: Keep an eye on updates to know when you need to do a docker pull alissonpereiraanjos/yue-interface:latest
 
 * **2025.01.31 🔥**: Added possibility to select existing models using a dropdown, added Refresh File Explorer button and Warnings are ignored in the log.
