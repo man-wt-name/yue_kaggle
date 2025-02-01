@@ -58,24 +58,6 @@ This interface **requires NVIDIA GPUs** for acceleration. Ensure you have the ne
    - Refer to the respective Docker and NVIDIA documentation for GPU passthrough (e.g., WSL2 on Windows).
    - **Note**: GPU support is mandatory. Without compatible NVIDIA GPUs, the container will not function correctly.
 
-## Docker Image
-
-The YuE Interface Docker image is hosted on Docker Hub:
-
-```
-alissonpereiraanjos/yue-interface:latest
-```
-
-## Environment Variables
-
-- **DOWNLOAD_MODELS**: Determines which models to download.
-  - Set to `all` to download all available models (BF16, INT8).
-  - Set to `all_bf16` to download all available models (BF16).
-  - Set to `all_int8` to download all available models (INT8).
-  - Set to `all_nf4` to download all available models (NF4).
-  - Alternatively, specify a comma-separated list of model keys to download specific models (e.g., `DOWNLOAD_MODELS=YuE-s2-1B-general,YuE-s1-7B-anneal-en-cot`).
-
-
 ## Using Docker Compose
 
 To simplify the setup and management of the YuE Interface, you can use Docker Compose. Docker Compose allows you to define and run multi-container Docker applications with a single configuration file (`docker-compose.yml`). Below are the steps to get started.
@@ -176,6 +158,23 @@ services:
 With Docker Compose, you can easily manage and deploy the YuE Interface with minimal setup! 🚀
 
 ## How to Run using only Docker
+
+## Docker Image
+
+The YuE Interface Docker image is hosted on Docker Hub:
+
+```
+alissonpereiraanjos/yue-interface:latest
+```
+
+## Environment Variables
+
+- **DOWNLOAD_MODELS**: Determines which models to download.
+  - Set to `all` to download all available models (BF16, INT8).
+  - Set to `all_bf16` to download all available models (BF16).
+  - Set to `all_int8` to download all available models (INT8).
+  - Set to `all_nf4` to download all available models (NF4).
+  - Alternatively, specify a comma-separated list of model keys to download specific models (e.g., `DOWNLOAD_MODELS=YuE-s2-1B-general,YuE-s1-7B-anneal-en-cot`).
 
 ### You can also not use docker compose and do everything manually just using docker.
 
