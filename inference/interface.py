@@ -40,10 +40,10 @@ os.makedirs(DEFAULT_OUTPUT_DIR, exist_ok=True)
 DEFAULT_INPUT_DIR = "/workspace/inputs"
 os.makedirs(DEFAULT_INPUT_DIR, exist_ok=True)
 
-with open(f"{PROJECT_DIR}/inference/prompt_examples/lyrics.txt", mode='r') as lyrics_example_file:
+with open(f"{PROJECT_DIR}/prompts_egs/lyrics.txt", mode='r') as lyrics_example_file:
     lyrics_example = lyrics_example_file.read()
 
-with open(f"{PROJECT_DIR}/inference/prompt_examples/genre.txt", mode='r') as genre_example_file:
+with open(f"{PROJECT_DIR}/prompts_egs/genre.txt", mode='r') as genre_example_file:
     genre_example = genre_example_file.read()
 
 # -------------------------------------------------
@@ -487,7 +487,11 @@ Note:
 
 - Music ICL generally requires a 30s audio segment. The model will write new songs with similar style of the provided audio, and may improve musicality.
 
-- We have 4 modes for ICL: mix, vocal, instrumental, and dual-track. 
+- Dual-track ICL works better in general, requiring both vocal and instrumental tracks.
+
+- For single-track ICL, you can provide a mix, vocal, or instrumental track.
+
+- You can separate the vocal and instrumental tracks using [python-audio-separator](https://github.com/nomadkaraoke/python-audio-separator) or [Ultimate Vocal Remover GUI](https://github.com/Anjok07/ultimatevocalremovergui).
                         """)
 
             use_audio_prompt = gr.Checkbox(
