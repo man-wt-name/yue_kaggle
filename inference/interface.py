@@ -13,6 +13,12 @@ import re
 import shutil  # Added to copy files
 from collections import OrderedDict
 
+# TODO
+# Choose use SDPA or FlashAttention2
+# Choose profiles for differents gpus
+# Apply transforms patch
+
+
 # -------------------------------------------------
 # If you are using Conda, set these paths accordingly
 CONDA_ACTIVATE_PATH = "/opt/conda/etc/profile.d/conda.sh"
