@@ -131,11 +131,14 @@ model = model.to(f'cuda:{cuda_idx}')
 
 model.eval()
 
+if torch.__version__ >= "2.0.0":
+    model = torch.compile(model)
+
 codectool = CodecManipulator("xcodec", 0, 1)
 codectool_stage2 = CodecManipulator("xcodec", 0, 8)
 model_config = OmegaConf.load(args.basic_model_config)
 codec_model = eval(model_config.generator.name)(**model_config.generator.config).to(device)
-parameter_dict = torch.load(args.resume_path, map_location='cpu')
+parameter_dict = torch.load(args.resume_path, map_location='cpu', weights_only=False)
 codec_model.load_state_dict(parameter_dict['codec_model'])
 codec_model.to(device)
 codec_model.eval()
@@ -302,6 +305,9 @@ model_stage2 = load_optimized_model(stage2_model, quantization_stage2)
 model_stage2 = model_stage2.to(f'cuda:{cuda_idx}')
 
 model_stage2.eval()
+
+if torch.__version__ >= "2.0.0":
+    model_stage2 = torch.compile(model_stage2)
 
 def stage2_generate(model, prompt, batch_size=16):
     codec_ids = codectool.unflatten(prompt, n_quantizer=1)
