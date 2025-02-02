@@ -21,7 +21,7 @@ If you have any very complex issues regarding the interface open a issue or send
 
 > **Note**: Keep an eye on updates to know when you need to do a docker pull alissonpereiraanjos/yue-interface:latest
 
-* **2025.01.30 (Oficial Repository) 🧑🏻‍💻 Inference Update**: 1. Support dual-track ICL mode. 2. Fix "instrumental" naming bug in output files. 3. Support seeding. 
+* **2025.02.01 (Oficial Repository) 🧑🏻‍💻 Inference Update**: 1. Support dual-track ICL mode. 2. Fix "instrumental" naming bug in output files. 3. Support seeding. 
 * **2025.01.31 🔥**: Added possibility to select existing models using a dropdown, added Refresh File Explorer button and Warnings are ignored in the log.
 * **2025.01.30 🔥**: Added support for NF4 quantized models. 
 * **2025.01.30 🔥**: Added the seed field and also improvements in the genres field.
@@ -57,24 +57,6 @@ This interface **requires NVIDIA GPUs** for acceleration. Ensure you have the ne
 2. **Windows/macOS**:
    - Refer to the respective Docker and NVIDIA documentation for GPU passthrough (e.g., WSL2 on Windows).
    - **Note**: GPU support is mandatory. Without compatible NVIDIA GPUs, the container will not function correctly.
-
-## Docker Image
-
-The YuE Interface Docker image is hosted on Docker Hub:
-
-```
-alissonpereiraanjos/yue-interface:latest
-```
-
-## Environment Variables
-
-- **DOWNLOAD_MODELS**: Determines which models to download.
-  - Set to `all` to download all available models (BF16, INT8).
-  - Set to `all_bf16` to download all available models (BF16).
-  - Set to `all_int8` to download all available models (INT8).
-  - Set to `all_nf4` to download all available models (NF4).
-  - Alternatively, specify a comma-separated list of model keys to download specific models (e.g., `DOWNLOAD_MODELS=YuE-s2-1B-general,YuE-s1-7B-anneal-en-cot`).
-
 
 ## Using Docker Compose
 
@@ -176,6 +158,23 @@ services:
 With Docker Compose, you can easily manage and deploy the YuE Interface with minimal setup! 🚀
 
 ## How to Run using only Docker
+
+## Docker Image
+
+The YuE Interface Docker image is hosted on Docker Hub:
+
+```
+alissonpereiraanjos/yue-interface:latest
+```
+
+## Environment Variables
+
+- **DOWNLOAD_MODELS**: Determines which models to download.
+  - Set to `all` to download all available models (BF16, INT8).
+  - Set to `all_bf16` to download all available models (BF16).
+  - Set to `all_int8` to download all available models (INT8).
+  - Set to `all_nf4` to download all available models (NF4).
+  - Alternatively, specify a comma-separated list of model keys to download specific models (e.g., `DOWNLOAD_MODELS=YuE-s2-1B-general,YuE-s1-7B-anneal-en-cot`).
 
 ### You can also not use docker compose and do everything manually just using docker.
 
