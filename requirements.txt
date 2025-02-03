@@ -12,7 +12,9 @@ descript-audio-codec
 scipy==1.15.1
 gradio
 flash-attn
-sageattention==1.0.6
 toml
 accelerate>=0.26.0
 bitsandbytes
+triton
+sageattention
+mmgp==3.1.4-post15

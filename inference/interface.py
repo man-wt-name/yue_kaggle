@@ -40,10 +40,10 @@ os.makedirs(DEFAULT_OUTPUT_DIR, exist_ok=True)
 DEFAULT_INPUT_DIR = "/workspace/inputs"
 os.makedirs(DEFAULT_INPUT_DIR, exist_ok=True)
 
-with open(f"{PROJECT_DIR}/prompts_egs/lyrics.txt", mode='r') as lyrics_example_file:
+with open(f"{PROJECT_DIR}/prompt_egs/lyrics.txt", mode='r') as lyrics_example_file:
     lyrics_example = lyrics_example_file.read()
 
-with open(f"{PROJECT_DIR}/prompts_egs/genre.txt", mode='r') as genre_example_file:
+with open(f"{PROJECT_DIR}/prompt_egs/genre.txt", mode='r') as genre_example_file:
     genre_example = genre_example_file.read()
 
 # -------------------------------------------------
@@ -232,7 +232,12 @@ def generate_song(
     prompt_start_time_2,
     prompt_end_time_2,
     disable_offload_model,
-    keep_intermediate
+    keep_intermediate,
+    use_mmgp,
+    mmgp_profile,
+    use_sdpa,
+    use_torch_compile,
+    use_transformers_patch
 ):
     """Spawns infer.py to generate music, capturing logs in real time."""
     os.makedirs(output_dir, exist_ok=True)
@@ -318,6 +323,28 @@ def generate_song(
     if keep_intermediate:
         cmd.append("--keep_intermediate")
         
+    if use_mmgp:
+        cmd += [
+            "--use_mmgp",
+            "--mmgp_profile", f"{mmgp_profile}"
+        ]
+        
+    if use_sdpa:
+        cmd.append("--sdpa")
+        
+    if use_torch_compile:
+        cmd.append("--compile")
+        
+    if use_transformers_patch:
+        print("Using transformers patch.")
+        shutil.copytree(f"/opt/conda/envs/{CONDA_ENV_NAME}/lib/python3.12/site-packages/transformers", f"{PROJECT_DIR}/transformers_bkp")
+        shutil.copytree(f"{PROJECT_DIR}/transformers", f"/opt/conda/envs/{CONDA_ENV_NAME}/lib/python3.12/site-packages/transformers")
+    else:
+        print("Not using transformers patch.")
+        if os.path.exists(f"{PROJECT_DIR}/transformers_bkp"):
+            shutil.rmtree(f"/opt/conda/envs/{CONDA_ENV_NAME}/lib/python3.12/site-packages/transformers")
+            shutil.copytree(f"{PROJECT_DIR}/transformers_bkp", f"/opt/conda/envs/{CONDA_ENV_NAME}/lib/python3.12/site-packages/transformers")
+        
     # If using conda, wrap the command
     if os.path.isfile(CONDA_ACTIVATE_PATH):
         prefix_cmd = (
@@ -392,6 +419,55 @@ def build_gradio_interface():
                 value=TOKENIZER_MODEL,
                 info="Path to the model tokenizer."
             )
+            gr.Markdown("#### MMGP optimizations by deepbeepmeep")
+            with gr.Row():
+                use_mmgp = gr.Checkbox(
+                    label="Use MMGP? (Only works with original BF16 model, Quantization will be performed based on the chosen profile.)",
+                    value=False,
+                    info="If set, Memory Management for GPU Poor by deepbeepmeep will be used."
+                )
+                
+                gr.Markdown(f"""
+                            **MMGP Profile:**
+                            - Profile 1: The fastest but requires 16 GB of VRAM.
+                            - Profile 3: A bit slower and the model is quantized to 8 bits but requires 12 GB of VRAM.
+                            - Profile 4: Very slow as this will incur sequencial offloading.
+                            """)
+                
+                mmgp_profile = gr.Dropdown(
+                    label="MMGP Profile",
+                    choices=[1, 3, 4],
+                    value=1,
+                    visible=False,
+                    interactive=True
+                )
+                
+                def toggle_mmgp_profile(checked):
+                    return gr.update(visible=checked)
+                
+                use_mmgp.change(
+                    fn=toggle_mmgp_profile,
+                    inputs=use_mmgp,
+                    outputs=mmgp_profile
+                )
+                
+                use_transformers_patch = gr.Checkbox(
+                    label="Use Transformers Patch (optional)(< 10GB of VRAM)?",
+                    value=False,
+                    info="If set, the model will use the transformers patch (this patch overwrites two files from the transformers library)."
+                )
+                
+                use_sdpa = gr.Checkbox(
+                    label="Use SDPA? (Can be used with MMGP Profile 4)",
+                    value=False,
+                    info="If set, the model will use SDPA instead of FlashAttention2."
+                )
+                
+                use_torch_compile = gr.Checkbox(
+                    label="Torch Compile? (Can be used with MMGP Profile 4)",
+                    value=False,
+                    info="If set, the model will be compiled using torch compile."
+                )
             
             gr.Markdown(f"""
                         **Tips:**
@@ -468,6 +544,7 @@ def build_gradio_interface():
             disable_offload_model = gr.Checkbox(
                 label="Disable Offload Model?",
                 value=False,
+                visible=False,
                 info="If set, the model will not be offloaded from the GPU to CPU after Stage 1 inference."
             )
             
@@ -698,7 +775,12 @@ Note:
             prompt_start_time_2,
             prompt_end_time_2,
             disable_offload_model,
-            keep_intermediate
+            keep_intermediate,
+            use_mmgp,
+            mmgp_profile,
+            use_sdpa,
+            use_torch_compile,
+            use_transformers_patch
         ):
             """Triggered when user clicks 'Generate Music'."""
             # Check if a process is already running
@@ -745,7 +827,12 @@ Note:
                 prompt_start_time_2,
                 prompt_end_time_2,
                 disable_offload_model,
-                keep_intermediate
+                keep_intermediate,
+                use_mmgp,
+                mmgp_profile,
+                use_sdpa,
+                use_torch_compile,
+                use_transformers_patch
             )
             # If the generation started successfully, hide "Generate" and show "Stop"
             if pid:
@@ -779,7 +866,12 @@ Note:
                 prompt_start_time_2,
                 prompt_end_time_2,
                 disable_offload_model,
-                keep_intermediate
+                keep_intermediate,
+                use_mmgp,
+                mmgp_profile,
+                use_sdpa,
+                use_torch_compile,
+                use_transformers_patch
             ],
             outputs=[log_box, generation_pid, generate_button, stop_button]
         )

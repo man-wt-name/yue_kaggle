@@ -1,5 +1,6 @@
 import os
 import sys
+from mmgp import offload
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'xcodec_mini_infer'))
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'xcodec_mini_infer', 'descriptaudiocodec'))
 import re
@@ -11,6 +12,7 @@ from collections import Counter
 import argparse
 import numpy as np
 import torch
+import torch.nn.functional as F
 import torchaudio
 from torchaudio.transforms import Resample
 import soundfile as sf
@@ -23,7 +25,9 @@ from models.soundstream_hubert_new import SoundStream
 from vocoder import build_codec_model, process_audio
 from post_process_audio import replace_low_freq_with_energy_matched
 import re
-
+from sageattention import sageattn
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+os.environ["TRITON_INTERPRET"] = "1"
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -42,7 +46,12 @@ parser.add_argument("--run_n_segments", type=int, default=2, help="The number of
 parser.add_argument("--stage2_batch_size", type=int, default=4, help="The batch size used in Stage 2 inference.")
 parser.add_argument("--quantization_stage1", type=str, default="bf16", choices=["bf16", "int8", "int4", "nf4"], help="The quantization mode of the model stage 1.")
 parser.add_argument("--quantization_stage2", type=str, default="bf16", choices=["bf16", "int8", "int4", "nf4"], help="The quantization mode of the model stage 2.")
+parser.add_argument("--sage_attention", action="store_true", help="If set, the model will use SageAttention instead of the default scaled dot product attention.")
+parser.add_argument("--sdpa", action="store_true", help="If set, the model will use SageAttention instead of the default scaled dot product attention.")
+parser.add_argument("--compile", action="store_true", help="If set, the model will be compiled using Torch JIT.")
 # parser.add_argument("--temperature", type=float, default=1.0, help="The temperature value to use during generation.")
+parser.add_argument("--use_mmgp", action="store_true", help="If set, the model will use MMGP for inference.")
+parser.add_argument("--mmgp_profile", type=int, default=0, choices=[1, 2, 3, 4, 5], help="The MMGP profile to use for inference.")
 
 # Prompt
 parser.add_argument("--genre_txt", type=str, required=True, help="The file path to a text file containing genre tags that describe the musical style or characteristics (e.g., instrumental, genre, mood, vocal timbre, vocal gender). This is used as part of the generation prompt.")
@@ -85,11 +94,24 @@ os.makedirs(stage1_output_dir, exist_ok=True)
 os.makedirs(stage2_output_dir, exist_ok=True)
 quantization_stage1 = args.quantization_stage1
 quantization_stage2 = args.quantization_stage2
+sage_attention = args.sage_attention
 seed = args.seed
+use_mmgp = args.use_mmgp
+mmgp_profile = args.mmgp_profile
+use_sdpa = args.sdpa
+compile = args.compile
+
+#if sage_attention:
+# F.scaled_dot_product_attention = sageattn
 
 # load tokenizer and model
 device = torch.device(f"cuda:{cuda_idx}" if torch.cuda.is_available() else "cpu")
 mmtokenizer = _MMSentencePieceTokenizer(tokenizer_path)
+
+if use_sdpa:
+    attn_implementation="sdpa"
+else:
+    attn_implementation="flash_attention_2"
 
 
 def set_seed(seed=42):
@@ -101,7 +123,7 @@ def set_seed(seed=42):
     torch.backends.cudnn.benchmark = False  # Disables benchmarking for consistency
 
 
-def load_optimized_model(model_path, quantization):
+def load_optimized_model(model_path, quantization, attention, use_mmgp=False, compile=False):
     bnb_config = None
     torch_dtype = torch.bfloat16
     
@@ -119,20 +141,46 @@ def load_optimized_model(model_path, quantization):
         model_path,
         quantization_config=bnb_config,
         torch_dtype=torch_dtype,
-        device_map="auto",
-        attn_implementation="flash_attention_2"
+        #device_map="auto",
+        attn_implementation=attention
     )
     
-    return torch.compile(model, mode="max-autotune")
+    if use_mmgp:
+        return model
+    
+    return torch.compile(model, mode="max-autotune") if compile else model
 
 set_seed(seed)
-model = load_optimized_model(stage1_model, quantization_stage1)
-model = model.to(f'cuda:{cuda_idx}')
+model = load_optimized_model(stage1_model, quantization_stage1, attn_implementation, use_mmgp, compile)
+
+if use_mmgp:
+    model.to("cpu")
+else:
+    model = model.to(f'cuda:{cuda_idx}')
 
 model.eval()
 
-if torch.__version__ >= "2.0.0":
-    model = torch.compile(model)
+print("Stage 2 inference...")
+
+model_stage2 = load_optimized_model(stage2_model, quantization_stage2, attn_implementation, use_mmgp, compile)
+
+if use_mmgp:
+    model_stage2.to("cpu")
+else:    
+    model_stage2 = model_stage2.to(f'cuda:{cuda_idx}')
+
+model_stage2.eval()
+
+if use_mmgp:
+    pipe = { "transformer": model , "stage2": model_stage2    }
+    kwargs  = {}
+    if mmgp_profile == 4 :
+        kwargs["budgets"] =  { "transformer": 3000, "*" : 5000 }
+    elif mmgp_profile == 2:
+        kwargs["budgets"] =  5000
+
+    quantizeTransformer = mmgp_profile == 3 or mmgp_profile == 4 or mmgp_profile == 5 
+    offload.profile(pipe, profile_no = mmgp_profile,  compile = compile, quantizeTransformer= quantizeTransformer,  verboseLevel= 1, **kwargs )
 
 codectool = CodecManipulator("xcodec", 0, 1)
 codectool_stage2 = CodecManipulator("xcodec", 0, 8)
@@ -293,21 +341,10 @@ stage1_output_set.append(inst_save_path)
 
 
 # offload model
-if not args.disable_offload_model:
-    model.cpu()
-    del model
-    torch.cuda.empty_cache()
-
-print("Stage 2 inference...")
-
-
-model_stage2 = load_optimized_model(stage2_model, quantization_stage2)
-model_stage2 = model_stage2.to(f'cuda:{cuda_idx}')
-
-model_stage2.eval()
-
-if torch.__version__ >= "2.0.0":
-    model_stage2 = torch.compile(model_stage2)
+# if not args.disable_offload_model:
+#     model.cpu()
+#     del model
+#     torch.cuda.empty_cache()
 
 def stage2_generate(model, prompt, batch_size=16):
     codec_ids = codectool.unflatten(prompt, n_quantizer=1)
@@ -459,7 +496,7 @@ for npy in stage2_result:
     with torch.no_grad():
         decoded_waveform = codec_model.decode(torch.as_tensor(codec_result.astype(np.int16), dtype=torch.long).unsqueeze(0).permute(1, 0, 2).to(device))
     decoded_waveform = decoded_waveform.cpu().squeeze(0)
-    decodec_rlt.append(torch.as_tensor(decoded_waveform))
+    decodec_rlt.append(torch.as_tensor(decoded_waveform, device = "cpu"))
     decodec_rlt = torch.cat(decodec_rlt, dim=-1)
     save_path = os.path.join(recons_output_dir, os.path.splitext(os.path.basename(npy))[0] + ".mp3")
     tracks.append(save_path)

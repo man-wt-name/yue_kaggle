@@ -1,0 +1,1 @@
+cp -r transformers/ /opt/conda/envs/pyenv/lib/python3.12/site-packages
