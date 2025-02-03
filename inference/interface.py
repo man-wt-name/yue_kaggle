@@ -419,7 +419,7 @@ def build_gradio_interface():
                 value=TOKENIZER_MODEL,
                 info="Path to the model tokenizer."
             )
-            gr.Markdown("#### MMGP optimizations by deepbeepmeep")
+            gr.Markdown("#### Optimizations using MMGP (Memory Management for the GPU Poor) by DeepBeepMeep")
             with gr.Column():
                 use_mmgp = gr.Checkbox(
                     label="Use MMGP? (Only works with original BF16 model, Quantization will be performed based on the chosen profile.)",
