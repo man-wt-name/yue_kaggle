@@ -207,7 +207,7 @@ def stop_generation(pid):
         return "Inference stopped successfully."
     except Exception as e:
         return f"Error stopping process: {str(e)}"
-
+    
 def generate_song(
     stage1_model,
     stage1_model_quantization,
@@ -334,16 +334,15 @@ def generate_song(
         
     if use_torch_compile:
         cmd.append("--compile")
-        
-    if use_transformers_patch:
-        print("Using transformers patch.")
-        shutil.copytree(f"/opt/conda/envs/{CONDA_ENV_NAME}/lib/python3.12/site-packages/transformers", f"{PROJECT_DIR}/transformers_bkp")
-        shutil.copytree(f"{PROJECT_DIR}/transformers", f"/opt/conda/envs/{CONDA_ENV_NAME}/lib/python3.12/site-packages/transformers")
-    else:
-        print("Not using transformers patch.")
-        if os.path.exists(f"{PROJECT_DIR}/transformers_bkp"):
-            shutil.rmtree(f"/opt/conda/envs/{CONDA_ENV_NAME}/lib/python3.12/site-packages/transformers")
-            shutil.copytree(f"{PROJECT_DIR}/transformers_bkp", f"/opt/conda/envs/{CONDA_ENV_NAME}/lib/python3.12/site-packages/transformers")
+   
+    # TODO: Solve the issue with the transformers patch     
+    # if use_transformers_patch:
+    #    print("Using transformers patch.")
+    #    subprocess.run(["bash", f"{PROJECT_DIR}/patchtransformers.sh"])
+    # else:
+    #     print("Not using transformers patch.")
+    #     if os.path.exists(f"{PROJECT_DIR}/transformers_bkp"):
+    #        subprocess.run(["bash", f"{PROJECT_DIR}/revertpatchtransformers.sh"])
         
     # If using conda, wrap the command
     if os.path.isfile(CONDA_ACTIVATE_PATH):
@@ -420,54 +419,55 @@ def build_gradio_interface():
                 info="Path to the model tokenizer."
             )
             gr.Markdown("#### Optimizations using MMGP (Memory Management for the GPU Poor) by DeepBeepMeep")
-            with gr.Column():
-                use_mmgp = gr.Checkbox(
-                    label="Use MMGP? (Only works with original BF16 model, Quantization will be performed based on the chosen profile.)",
-                    value=False,
-                    info="If set, Memory Management for GPU Poor by deepbeepmeep will be used."
-                )
-                
-                gr.Markdown(f"""
-                            **MMGP Profile:**
-                            - Profile 1: The fastest but requires 16 GB of VRAM.
-                            - Profile 3: A bit slower and the model is quantized to 8 bits but requires 12 GB of VRAM.
-                            - Profile 4: Very slow as this will incur sequencial offloading.
-                            """)
-                
-                mmgp_profile = gr.Dropdown(
-                    label="MMGP Profile",
-                    choices=[1, 3, 4],
-                    value=1,
-                    visible=False,
-                    interactive=True
-                )
-                
-                def toggle_mmgp_profile(checked):
-                    return gr.update(visible=checked)
-                
-                use_mmgp.change(
-                    fn=toggle_mmgp_profile,
-                    inputs=use_mmgp,
-                    outputs=mmgp_profile
-                )
-                
-                use_transformers_patch = gr.Checkbox(
-                    label="Use Transformers Patch (optional)(< 10GB of VRAM)?",
-                    value=False,
-                    info="If set, the model will use the transformers patch (this patch overwrites two files from the transformers library)."
-                )
-                
-                use_sdpa = gr.Checkbox(
-                    label="Use SDPA? (Can be used with MMGP Profile 4)",
-                    value=False,
-                    info="If set, the model will use SDPA instead of FlashAttention2."
-                )
-                
-                use_torch_compile = gr.Checkbox(
-                    label="Torch Compile? (Can be used with MMGP Profile 4)",
-                    value=False,
-                    info="If set, the model will be compiled using torch compile."
-                )
+            with gr.Row():
+                with gr.Column():
+                    use_mmgp = gr.Checkbox(
+                        label="Use MMGP? (Only works with original BF16 model, Quantization will be performed based on the chosen profile.)",
+                        value=False,
+                        info="If set, Memory Management for GPU Poor by deepbeepmeep will be used."
+                    )
+                    
+                    gr.Markdown(f"""
+                                **MMGP Profile:**
+                                - Profile 1: The fastest but requires 16 GB of VRAM.
+                                - Profile 3: A bit slower and the model is quantized to 8 bits but requires 12 GB of VRAM.
+                                - Profile 4: Very slow as this will incur sequencial offloading.
+                                """)
+                    
+                    mmgp_profile = gr.Dropdown(
+                        label="MMGP Profile",
+                        choices=[1, 3, 4],
+                        value=1,
+                        visible=False,
+                        interactive=True
+                    )
+                    
+                    def toggle_mmgp_profile(checked):
+                        return gr.update(visible=checked)
+                    
+                    use_mmgp.change(
+                        fn=toggle_mmgp_profile,
+                        inputs=use_mmgp,
+                        outputs=mmgp_profile
+                    )
+                    
+                    use_transformers_patch = gr.Checkbox(
+                        label="Use Transformers Patch (optional)(< 10GB of VRAM)?",
+                        value=False,
+                        info="If set, the model will use the transformers patch (this patch overwrites two files from the transformers library)."
+                    )
+                    
+                    use_sdpa = gr.Checkbox(
+                        label="Use SDPA? (Can be used with MMGP Profile 4)",
+                        value=False,
+                        info="If set, the model will use SDPA instead of FlashAttention2."
+                    )
+                    
+                    use_torch_compile = gr.Checkbox(
+                        label="Torch Compile? (Can be used with MMGP Profile 4)",
+                        value=False,
+                        info="If set, the model will be compiled using torch compile."
+                    )
             
             gr.Markdown(f"""
                         **Tips:**
