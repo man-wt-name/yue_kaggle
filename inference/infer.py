@@ -244,13 +244,13 @@ output_seq = None
 # Here is suggested decoding config
 top_p = 0.93
 temperature = 1.0
-repetition_penalty = 1.2
+repetition_penalty = 1.0
 # special tokens
 start_of_segment = mmtokenizer.tokenize('[start_of_segment]')
 end_of_segment = mmtokenizer.tokenize('[end_of_segment]')
 # Format text prompt
 run_n_segments = min(args.run_n_segments+1, len(lyrics))
-for i, p in enumerate(tqdm(prompt_texts[:run_n_segments])):
+for i, p in enumerate(tqdm(prompt_texts[:run_n_segments], desc="Stage1 inference...")):
     section_text = p.replace('[start_of_segment]', '').replace('[end_of_segment]', '')
     guidance_scale = 1.5 if i <=1 else 1.2
     if i==0:
