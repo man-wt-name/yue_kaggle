@@ -51,6 +51,7 @@ if [ ! -f "$INIT_MARKER" ]; then
     echo "Installing dependencies from requirements.txt..."
     pip install --no-cache-dir -r $REPO_DIR/requirements.txt
 
+
     #cp -r $REPO_DIR/transformers/ /opt/conda/envs/pyenv/lib/python3.12/site-packages
 
     if [ ! -d "${REPO_DIR}/inference/xcodec_mini_infer" ]; then

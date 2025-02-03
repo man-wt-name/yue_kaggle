@@ -354,7 +354,9 @@ def generate_song(
         final_cmd_str = prefix_cmd + " ".join(cmd) + suffix_cmd
     else:
         final_cmd_str = " ".join(cmd)
+    
     print(final_cmd_str)
+    
     proc = subprocess.Popen(
         final_cmd_str,
         shell=True,
