@@ -336,13 +336,13 @@ def generate_song(
         cmd.append("--compile")
    
     # TODO: Solve the issue with the transformers patch     
-    # if use_transformers_patch:
-    #    print("Using transformers patch.")
-    #    subprocess.run(["bash", f"{PROJECT_DIR}/patchtransformers.sh"])
-    # else:
-    #     print("Not using transformers patch.")
-    #     if os.path.exists(f"{PROJECT_DIR}/transformers_bkp"):
-    #        subprocess.run(["bash", f"{PROJECT_DIR}/revertpatchtransformers.sh"])
+    if use_transformers_patch:
+       print("Using transformers patch.")
+       subprocess.run(["bash", f"{PROJECT_DIR}/patchtransformers.sh"])
+    else:
+        print("Not using transformers patch.")
+        if os.path.exists(f"{PROJECT_DIR}/transformers_bkp"):
+           subprocess.run(["bash", f"{PROJECT_DIR}/revertpatchtransformers.sh"])
         
     # If using conda, wrap the command
     if os.path.isfile(CONDA_ACTIVATE_PATH):
@@ -456,7 +456,7 @@ def build_gradio_interface():
                     use_transformers_patch = gr.Checkbox(
                         label="Use Transformers Patch (optional)(< 10GB of VRAM)?",
                         value=False,
-                        info="If set, the model will use the transformers patch (this patch overwrites two files from the transformers library)."
+                        info="If set, the model will use the transformers patch (this patch overwrites two files from the transformers library, It may take a little longer to start generating after clicking the Generate button as a backup of the transformers will be performed or restored)."
                     )
                     
                     use_sdpa = gr.Checkbox(
