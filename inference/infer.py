@@ -219,7 +219,7 @@ def encode_audio(codec_model, audio_prompt, device, target_bw=0.5):
     return raw_codes
 
 def split_lyrics(lyrics):
-    pattern = r"\[(\w+)\](.*?)\n(?=\[|\Z)"
+    pattern = r"\[(\w+)\](.*?)(?=\[|\Z)"
     segments = re.findall(pattern, lyrics, re.DOTALL)
     structured_lyrics = [f"[{seg[0]}]\n{seg[1].strip()}\n\n" for seg in segments]
     return structured_lyrics
