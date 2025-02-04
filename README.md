@@ -4,15 +4,9 @@ Welcome to the **YuE Interface**, a robust and user-friendly Docker-based soluti
 
 > **Note**: This project is a fork of the official [YuE repository](https://github.com/multimodal-art-projection/YuE). For more information about inference settings or tips see the official repository README. 
 
+> **Note**: There is this other fork that I made (from another fork made by sgsdxzy hehehe) for a more optimized version of YuE that uses exllamav2, the generated music has a little degradation but the inference is extremely faster than what you will get in this fork made from the official repository. If you want maximum quality it is recommended to use this fork here, otherwise if your focus is speed and you don't care much about the degradation problems coming from quantization feel free to use this [fork](https://github.com/alisson-anjos/YuE-exllamav2-UI)
 
-
-### Note
-
-If you have any very complex issues regarding the interface open a issue or send me a message on my civitiai profile.
-
-[My Profile](https://civitai.com/user/alissonerdx)
-
-## Gradio Interface
+## Interface
 
 ![preview gradio](/preview.png)
 
