@@ -237,7 +237,8 @@ def generate_song(
     mmgp_profile,
     use_sdpa,
     use_torch_compile,
-    use_transformers_patch
+    use_transformers_patch,
+    repetition_penalty
 ):
     """Spawns infer.py to generate music, capturing logs in real time."""
     os.makedirs(output_dir, exist_ok=True)
@@ -286,6 +287,7 @@ def generate_song(
         "--stage2_model", f"'{stage2_model}'",
         "--quantization_stage2", f"{stage2_model_quantization}",
         "--tokenizer", f"'{tokenizer_model}'",
+        "--repetition_penalty", str(repetition_penalty),
         "--genre_txt", f"'{genre_txt_path}'",
         "--lyrics_txt", f"'{lyrics_txt_path}'",
         "--run_n_segments", str(run_n_segments),
@@ -543,6 +545,13 @@ def build_gradio_interface():
                 info="The maximum number of new tokens to generate in one pass during text generation."
             )
             
+            repetition_penalty = gr.Number(
+                label="Repetition Penalty",
+                value=1.1,
+                precision=2,
+                info="Repetition Penalty ranges from 1.0 to 2.0 (or higher in some cases). It controls the diversity and coherence of the audio tokens generated. The higher the value, the greater the discouragement of repetition. Setting value to 1.0 means no penalty."
+            )
+            
             disable_offload_model = gr.Checkbox(
                 label="Disable Offload Model?",
                 value=False,
@@ -782,7 +791,8 @@ Note:
             mmgp_profile,
             use_sdpa,
             use_torch_compile,
-            use_transformers_patch
+            use_transformers_patch,
+            repetition_penalty
         ):
             """Triggered when user clicks 'Generate Music'."""
             # Check if a process is already running
@@ -834,7 +844,8 @@ Note:
                 mmgp_profile,
                 use_sdpa,
                 use_torch_compile,
-                use_transformers_patch
+                use_transformers_patch,
+                repetition_penalty
             )
             # If the generation started successfully, hide "Generate" and show "Stop"
             if pid:
@@ -873,7 +884,8 @@ Note:
                 mmgp_profile,
                 use_sdpa,
                 use_torch_compile,
-                use_transformers_patch
+                use_transformers_patch,
+                repetition_penalty
             ],
             outputs=[log_box, generation_pid, generate_button, stop_button]
         )
