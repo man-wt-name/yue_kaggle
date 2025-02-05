@@ -15,6 +15,7 @@ Welcome to the **YuE Interface**, a robust and user-friendly Docker-based soluti
 
 > **Note**: Keep an eye on updates to know when you need to do a docker pull alissonpereiraanjos/yue-interface:latest
 
+* **2025.02.05 (Oficial Repository) 🔥**: Added repetition penalty
 * **2025.02.03 🔥**: Added Optimizations (MMGP - Memory Management for the GPU Poor by DeepBeepMeep)
 * **2025.02.01 (Oficial Repository) 🧑🏻‍💻 Inference Update**: 1. Support dual-track ICL mode. 2. Fix "instrumental" naming bug in output files. 3. Support seeding. 
 * **2025.01.31 🔥**: Added possibility to select existing models using a dropdown, added Refresh File Explorer button and Warnings are ignored in the log.

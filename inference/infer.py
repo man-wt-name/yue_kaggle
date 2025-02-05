@@ -42,6 +42,7 @@ parser.add_argument("--stage1_model", type=str, default="m-a-p/YuE-s1-7B-anneal-
 parser.add_argument("--stage2_model", type=str, default="m-a-p/YuE-s2-1B-general", help="The model checkpoint path or identifier for the Stage 2 model.")
 parser.add_argument("--tokenizer", type=str, default="mm_tokenizer_v0.2_hf/tokenizer.model", help="The model tokenizer path")
 parser.add_argument("--max_new_tokens", type=int, default=3000, help="The maximum number of new tokens to generate in one pass during text generation.")
+parser.add_argument("--repetition_penalty", type=float, default=1.1, help="repetition_penalty ranges from 1.0 to 2.0 (or higher in some cases). It controls the diversity and coherence of the audio tokens generated. The higher the value, the greater the discouragement of repetition. Setting value to 1.0 means no penalty.")
 parser.add_argument("--run_n_segments", type=int, default=2, help="The number of segments to process during the generation.")
 parser.add_argument("--stage2_batch_size", type=int, default=4, help="The batch size used in Stage 2 inference.")
 parser.add_argument("--quantization_stage1", type=str, default="bf16", choices=["bf16", "int8", "int4", "nf4"], help="The quantization mode of the model stage 1.")
@@ -244,7 +245,7 @@ output_seq = None
 # Here is suggested decoding config
 top_p = 0.93
 temperature = 1.0
-repetition_penalty = 1.0
+repetition_penalty = args.repetition_penalty
 # special tokens
 start_of_segment = mmtokenizer.tokenize('[start_of_segment]')
 end_of_segment = mmtokenizer.tokenize('[end_of_segment]')
