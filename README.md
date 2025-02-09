@@ -11,9 +11,6 @@ Welcome to the **YuE Interface**, a robust and user-friendly Docker-based soluti
 ![preview gradio](/preview.png)
 
 ## News and Updates
-* **2025.02.07 🎉** Get YuE for Windows on [pinokio](https://pinokio.computer).
-* **2025.02.06** Join Us on Discord! [![Discord](https://img.shields.io/discord/842440537755353128?color=%237289da&logo=discord)](https://discord.gg/ssAyWMnMzu)
-
 
 > **Note**: Keep an eye on updates to know when you need to do a docker pull alissonpereiraanjos/yue-interface:latest
 
