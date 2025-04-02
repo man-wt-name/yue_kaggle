@@ -1,4 +1,10 @@
-# YuE Interface
+<div align="center">
+   <h1>YuE Interface</h1>
+    <picture>
+        <source srcset="./assets/logo/黑底.svg" media="(prefers-color-scheme: dark)">
+        <img src="./assets/logo/白底.svg" width="25%">
+    </picture>
+</div>
 
 Welcome to the **YuE Interface**, a robust and user-friendly Docker-based solution for generating music using YuE models. This interface leverages Gradio for an interactive web UI, enabling you to configure and execute music generation tasks seamlessly. Whether you're running locally with Docker or deploying on RunPod, this guide will help you get started.
 
