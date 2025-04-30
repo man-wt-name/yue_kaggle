@@ -9,7 +9,7 @@ tqdm
 tensorboard
 descript-audiotools>=0.7.2
 descript-audio-codec
-scipy==1.15.1
+scipy
 gradio
 flash-attn
 toml
